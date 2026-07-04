@@ -4,67 +4,130 @@ date: 2026-07-04 00:00:00
 type: about
 ---
 
-## Aleph_null
+# Vito Wong
 
-浙江大学计算机科学与技术专业学生，AI 与编程学习者，独立开发爱好者。我的兴趣集中在全栈 AI 开发、算法工具化、CTF 和图寻。我更喜欢把抽象问题拆成可以验证的数学结构，再把推导结果写成可运行、可交互、可展示的系统。
-
-我的能力结构更偏向“数学理解 + 工程实现 + AI 创造力”的组合：先把问题的边界和结构讲清楚，再把它落到代码、界面和可长期维护的作品中。对我来说，一个好的项目不只是能运行，还应该能解释问题、组织复杂度，并让使用者直观看到它的价值。
+**Undergraduate Student, Computer Science and Technology**<br>
+**Zhejiang University**<br>
+Email: vito_wong0619@163.com<br>
+GitHub: [Aleph-000](https://github.com/Aleph-000)
 
 ## Profile
 
-- Education: 浙江大学计算机科学与技术专业
-- Identity: AI 与编程学习者 / 独立开发爱好者
-- Focus: 全栈 AI 开发、算法可视化、AI 图片与 AI 视频、CTF、图寻
-- GitHub: [Aleph-000](https://github.com/Aleph-000)
+I am an undergraduate student in Computer Science and Technology at Zhejiang University. My interests lie in AI-native software development, full-stack systems, algorithms, CTF security, and geolocation-based visual reasoning.
+
+I have a solid foundation in linear algebra, probability theory, discrete mathematics, and data structures. I am especially interested in using rigorous mathematical models to describe and analyze computational problems, and in turning intuitive algorithmic ideas into clear, implementable structures.
+
+I have also studied general physics and have an introductory background in quantum mechanics. I am interested in topics at the intersection of computation, mathematics, and physical intuition, including hash tables, algorithmic search, and quantum computing.
+
+## Education
+
+### Zhejiang University
+
+**B.S. in Computer Science and Technology**<br>
+Hangzhou, China
+
+Relevant coursework and foundations:
+
+- Linear Algebra
+- Probability Theory
+- Discrete Mathematics
+- Data Structures
+- General Physics
+- Introductory Quantum Mechanics
 
 ## Experience
 
-### 浙江大学启真交叉学科创新创业实验室
+### Software Team Member
 
-软件团队成员，2026.4.16 至今。
+**Qiushi Interdisciplinary Innovation and Entrepreneurship Laboratory, Zhejiang University**<br>
+Apr. 2026 - Present
 
-这段经历让我把个人兴趣放进更接近真实协作的环境中：需求拆解、工程实现、团队沟通、代码质量和长期维护都需要被同时考虑。它强化了我对软件工程的理解：好的系统不是功能堆叠，而是可沟通、可验证、可迭代的技术资产。
+- Participate in software development projects within an interdisciplinary innovation environment.
+- Work on engineering-oriented implementation, AI-assisted development, and practical software systems.
+- Explore the integration of computer science, product design, and interdisciplinary problem solving.
 
-### 计算理论与交叉方向学习
+### Incoming Participant
 
-我关注“计算理论之美（Summer 2026）”相关方向，包括组合最优化、哈希表、差分隐私、量子计算、数据结构复杂性与图计算。相比单纯追求工具调用，我更希望理解算法背后的结构：它为什么有效，它的边界在哪里，它能否被工程系统稳定地复用。
+**The Beauty of Computing Theory Summer School, Nanjing University**<br>
+Jul. 2026
+
+- Selected to attend the 5th "Beauty of Computing Theory" summer school supported by the School of Computer Science and the School of Intelligent Software and Engineering, Nanjing University.
+- The program covers topics in theoretical computer science and algorithm design, including combinatorial optimization, hash tables, differential privacy, quantum computing, data structure lower bounds, and graph computation.
+- Expected to engage with advanced lectures delivered by researchers from universities and research institutions.
+
+### Student Lecturer
+
+**Supplementary Teaching for General Physics I (H), Chu Kochen Honors College, Zhejiang University**<br>
+May 2026
+
+- Delivered a supplementary teaching session for General Physics I (H).
+- Helped students understand core physical concepts through mathematical derivation and structured problem solving.
+- Emphasized the connection between physical intuition, formal reasoning, and exam-oriented applications.
 
 ## Selected Project
 
 ### 24 Points Machine
 
-24 Points Machine 是一个围绕 24 点问题的项目，分为算法求解核心和网站展示两个部分。
+GitHub: [Aleph-000/24-Points-Machine](https://github.com/Aleph-000/24-Points-Machine)
 
-- 核心仓库：[Aleph-000/24-Points-Machine](https://github.com/Aleph-000/24-Points-Machine)
-- 网站仓库：[Aleph-000/24-Points-Machine-Website](https://github.com/Aleph-000/24-Points-Machine-Website)
+A C++ command-line solver for the 24-point game.
 
-这个项目体现了我对“算法产品化”的兴趣：先把枚举、表达式组合和求解逻辑组织清楚，再把它包装成可以被用户直接体验的网站。它不是只停留在题解层面的练习，而是一次把算法能力转化为交互工具的实践。
-
-## Technical Direction
-
-### Full-stack AI Development
-
-我希望把 AI 能力接入真实应用，而不是只停留在模型调用。全栈 AI 开发需要同时理解前端体验、后端接口、数据组织、模型输入输出和部署维护。我的目标是做出能被持续使用的 AI 工具，而不是一次性的 Demo。
-
-### Mathematical Engineering
-
-我有良好的线性代数、概率论、离散数学和数据结构基础。相比凭直觉堆功能，我更喜欢用严谨的数学语言描述问题，再通过数理推导让模糊的算法过程变得清晰。这种从抽象结构到工程实现的转换，是我持续投入的方向。
-
-### AI Media Creation
-
-我关注 AI 图片和 AI 视频生成。它们不只是内容生产工具，也是一种新的交互媒介：提示词、视觉结构、风格控制和产品场景需要一起设计。未来我希望把 AI 生成能力和 Web 应用结合，做出更有表达力的创作工具。
-
-## Academic Foundation
-
-我修读过普通物理，并具备一定量子力学基础。物理训练让我习惯从模型、约束和守恒结构出发理解问题；数学训练让我重视证明和边界；计算机训练让我把这些理解落实到数据结构、算法和系统实现中。
-
-我对哈希表、图计算、量子计算和算法复杂性保持持续兴趣。这些方向看起来分散，但共同指向一个核心问题：如何用结构化方法处理复杂世界中的信息。
+- Designed and implemented a symbolic search program for solving generalized 24-point problems.
+- Extended the classical arithmetic setting with additional operations such as square roots, factorials, and logarithms.
+- Supported configurable search parameters and random simulation mode.
+- Explored expression enumeration, pruning, and mathematical search-space design.
 
 ## Awards
 
-- 2023.10.08 全国中学生物理竞赛省级赛区二等奖，中国物理学会
-- 2024.05.26 物理碗亚洲前 10、全球前 100、全国金奖，美国物理教师协会 AAPT
+### Provincial Second Prize
 
-## Positioning
+**National High School Physics Competition, Provincial Division**<br>
+Chinese Physical Society<br>
+Oct. 2023
 
-我希望把自己训练成一个同时理解数学、AI 和工程的人：能读懂理论，能写出系统，也能把作品呈现给真实用户。这里会作为我的公开档案，长期整理项目、能力和思考。
+### National Gold Award; Top 10 in Asia; Top 100 Globally
+
+**Physics Bowl**<br>
+American Association of Physics Teachers<br>
+May 2024
+
+## Technical Skills
+
+### Programming and Software Engineering
+
+- C / C++
+- Data structures and algorithms
+- Full-stack development
+- Command-line tools
+- Git and GitHub-based development workflow
+
+### AI and Product Development
+
+- AI-native application development
+- AI-assisted programming
+- Generative AI workflows
+- Image and video generation pipelines
+
+### Mathematics and Theory
+
+- Linear algebra
+- Probability theory
+- Discrete mathematics
+- Algorithmic modeling
+- Introductory quantum computing
+
+### Security and Visual Reasoning
+
+- CTF and web security
+- Geolocation-based visual reasoning
+- Image-based information analysis
+
+## Research and Technical Interests
+
+- AI-native full-stack applications
+- Algorithm design and mathematical modeling
+- Hash tables and data structures
+- CTF / Web security
+- Geolocation and visual reasoning
+- Quantum computing
+- Independent software projects

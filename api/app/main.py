@@ -1,6 +1,4 @@
 from contextlib import asynccontextmanager
-from typing import Iterable
-
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import delete, func, select, update
@@ -10,7 +8,6 @@ from sqlalchemy.orm import Session
 from .auth import create_access_token, get_current_user, hash_password
 from .auth import resolve_current_user, verify_password
 from .config import settings
-from .content import get_markdown_post, load_markdown_posts, search_markdown_posts
 from .database import engine, get_db
 from .models import Base, Comment, OnlinePost, PageView, Reaction, User, utcnow
 from .schemas import AdminPostOut, AnalyticsOut, CommentCreate, CommentOut
@@ -123,7 +120,7 @@ def _public_post_exists(db: Session, slug: str) -> bool:
             OnlinePost.published == True,  # noqa: E712
         )
     )
-    return online_id is not None or get_markdown_post(slug) is not None
+    return online_id is not None
 
 
 def _require_public_post(db: Session, slug: str) -> None:
@@ -213,7 +210,6 @@ def me(user: User = Depends(get_current_user)) -> UserOut:
 
 @app.get("/posts", response_model=list[PostOut])
 def list_posts(db: Session = Depends(get_db)) -> list[PostOut]:
-    markdown = [_markdown_post_out(post) for post in load_markdown_posts()]
     online = [
         _online_post_out(post)
         for post in db.scalars(
@@ -222,7 +218,7 @@ def list_posts(db: Session = Depends(get_db)) -> list[PostOut]:
             .order_by(OnlinePost.created_at.desc())
         )
     ]
-    return online + markdown
+    return online
 
 
 @app.get("/admin/posts", response_model=list[AdminPostOut])
@@ -368,17 +364,7 @@ def get_post(slug: str, db: Session = Depends(get_db)) -> PostDetail:
     )
     if online:
         return _online_post_detail(online)
-    markdown = get_markdown_post(slug)
-    if not markdown:
-        raise HTTPException(status_code=404)
-    return PostDetail(
-        slug=markdown.slug,
-        title=markdown.title,
-        date=markdown.date,
-        excerpt=markdown.excerpt,
-        body=markdown.body,
-        source=markdown.source,
-    )
+    raise HTTPException(status_code=404)
 
 
 @app.get("/search", response_model=list[PostOut])
@@ -386,14 +372,13 @@ def search(q: str, db: Session = Depends(get_db)) -> list[PostOut]:
     query = q.strip()
     if not query:
         return []
-    markdown = [_markdown_post_out(post) for post in search_markdown_posts(query)]
-    online_posts: Iterable[OnlinePost] = db.scalars(
+    online_posts = db.scalars(
         select(OnlinePost).where(
             OnlinePost.published == True,  # noqa: E712
             (OnlinePost.title.contains(query)) | (OnlinePost.body.contains(query)),
         )
     )
-    return [_online_post_out(post) for post in online_posts] + markdown
+    return [_online_post_out(post) for post in online_posts]
 
 
 @app.get("/posts/{slug}/comments", response_model=list[CommentOut])
@@ -530,7 +515,7 @@ def my_favorites(
             Reaction.kind == "favorite",
         )
     ).all()
-    posts = {post.slug: _markdown_post_out(post) for post in load_markdown_posts()}
+    posts = {}
     for post in db.scalars(
         select(OnlinePost).where(
             OnlinePost.slug.in_(slugs),

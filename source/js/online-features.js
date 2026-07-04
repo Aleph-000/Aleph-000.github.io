@@ -3,6 +3,7 @@
   const onlinePath = /^\/online\/?$/;
   const authPath = /^\/(login|register)\/?$/;
   const adminPath = /^\/admin\/?$/;
+  const accountPath = /^\/account\/?$/;
 
   function defaultApiBase() {
     const host = window.location.hostname;
@@ -93,6 +94,10 @@
           return `<ul>${items}</ul>`;
         }
         const inline = text
+          .replace(
+            /\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,
+            '<a class="link" target="_blank" rel="noopener" href="$2">$1</a>'
+          )
           .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
           .replace(/`([^`]+)`/g, "<code>$1</code>")
           .replace(/\n/g, "<br>");
@@ -137,6 +142,60 @@
   function staticPostUrl(post) {
     const date = String(post.date || "").slice(0, 10).replace(/-/g, "/");
     return date ? `/${date}/${post.slug}/` : `/archives/`;
+  }
+
+  function postUrl(post) {
+    return post.source === "online"
+      ? `/online/?slug=${encodeURIComponent(post.slug)}`
+      : staticPostUrl(post);
+  }
+
+  function formatPostDate(value) {
+    return String(value || "").slice(0, 10) || "在线文章";
+  }
+
+  function renderHomeArticle(post) {
+    return `
+      <li class="home-article-item">
+        <div class="flex flex-col gap-5 px-7 pb-7 pt-7">
+          <h3 class="home-article-title">
+            <a href="${postUrl(post)}">${escapeHtml(post.title)}</a>
+          </h3>
+          <div class="home-article-content markdown-body">
+            ${escapeHtml(post.excerpt || "").slice(0, 260)}
+          </div>
+          <div class="home-article-meta-info-container">
+            <div class="home-article-meta-info">
+              <span><i class="fa-solid fa-calendars"></i>&nbsp;
+                <span class="home-article-date">${formatPostDate(post.date)}</span>
+              </span>
+              <span class="home-article-category">
+                <i class="fa-solid fa-folders"></i>&nbsp;
+                <ul><li><a href="/online/">在线</a>&nbsp;</li></ul>
+              </span>
+            </div>
+            <a href="${postUrl(post)}">阅读全文<span class="seo-reader-text">${escapeHtml(post.title)}</span>&nbsp;<i class="fa-solid fa-angle-right"></i></a>
+          </div>
+        </div>
+      </li>
+    `;
+  }
+
+  async function initHomePosts() {
+    const isHome =
+      window.location.pathname === "/" || window.location.pathname === "/index.html";
+    if (!isHome) return;
+    const list = document.querySelector(".home-article-list");
+    if (!list || list.dataset.onlineHomeMounted) return;
+    list.dataset.onlineHomeMounted = "true";
+    try {
+      const posts = await request("/posts");
+      list.innerHTML = posts.length
+        ? posts.map(renderHomeArticle).join("")
+        : '<li class="home-article-item"><div class="flex flex-col gap-5 px-7 pb-7 pt-7"><h3 class="home-article-title">暂无文章</h3><div class="home-article-content markdown-body">管理员可以在后台发布新文章。</div></div></li>';
+    } catch (_) {
+      list.innerHTML = '<li class="home-article-item"><div class="flex flex-col gap-5 px-7 pb-7 pt-7"><h3 class="home-article-title">文章暂不可用</h3><div class="home-article-content markdown-body">请稍后刷新。</div></div></li>';
+    }
   }
 
   function setStatus(root, text) {
@@ -372,7 +431,7 @@
         });
         storeSession(result);
         status.textContent = "已登录，正在跳转。";
-        const next = new URLSearchParams(window.location.search).get("next") || "/";
+        const next = new URLSearchParams(window.location.search).get("next") || "/account/";
         window.location.href = next.startsWith("/") ? next : "/";
       } catch (error) {
         status.textContent = error.status === 409 ? "用户名已存在。" : "登录或注册失败，请检查输入。";
@@ -398,15 +457,14 @@
       <section class="aleph-console">
         <div class="aleph-console__header">
           <h1>动态文章</h1>
-          <p>数据库在线文章会即时出现在这里；静态 Markdown 文章继续走 Hexo 页面。</p>
+          <p>这里显示后台发布的在线文章。</p>
         </div>
         <div class="aleph-online-list">
           ${posts
             .map((post) => {
-              const href = post.source === "online" ? `/online/?slug=${encodeURIComponent(post.slug)}` : staticPostUrl(post);
               return `
                 <article class="aleph-online-list__item">
-                  <a href="${href}">${escapeHtml(post.title)}</a>
+                  <a href="${postUrl(post)}">${escapeHtml(post.title)}</a>
                   <span>${escapeHtml(post.source)}</span>
                   <p>${escapeHtml(post.excerpt)}</p>
                 </article>
@@ -454,6 +512,109 @@
     } catch (_) {
       root.innerHTML = '<p class="aleph-online__status">在线文章暂不可用。</p>';
     }
+  }
+
+  function renderAccountDock() {
+    const existing = document.querySelector(".aleph-account-dock");
+    if (existing) existing.remove();
+    const user = currentUser();
+    const link = document.createElement("a");
+    link.className = "aleph-account-dock";
+    link.href = user ? "/account/" : authLink("login");
+    link.title = user ? "账户与收藏" : "登录";
+    link.setAttribute("aria-label", link.title);
+    link.innerHTML = user
+      ? `<i class="fa-regular fa-circle-user"></i><span>${escapeHtml(user.display_name || user.username)}</span>`
+      : '<i class="fa-regular fa-right-to-bracket"></i><span>登录</span>';
+    document.body.appendChild(link);
+  }
+
+  function renderAccount(root, favorites) {
+    const user = currentUser();
+    const hasFavorites = favorites && favorites.length > 0;
+    root.innerHTML = `
+      <section class="aleph-console aleph-account">
+        <div class="aleph-console__header">
+          <h1>账户</h1>
+          <p>${escapeHtml(user.display_name || user.username)}</p>
+        </div>
+        <div class="aleph-console__actions">
+          ${user.is_owner ? '<a class="aleph-online__link" href="/admin/"><i class="fa-regular fa-pen-to-square"></i> 管理后台</a>' : ""}
+          <button type="button" data-account-action="logout"><i class="fa-regular fa-right-from-bracket"></i> 退出登录</button>
+        </div>
+        <section class="aleph-account__section">
+          <h2>我的收藏</h2>
+          ${
+            hasFavorites
+              ? `<div class="aleph-online-list">${favorites
+                  .map(
+                    (post) => `
+                      <article class="aleph-online-list__item">
+                        <a href="${postUrl(post)}">${escapeHtml(post.title)}</a>
+                        <span>${escapeHtml(post.source)}</span>
+                        <p>${escapeHtml(post.excerpt || "")}</p>
+                      </article>
+                    `
+                  )
+                  .join("")}</div>`
+              : '<p class="aleph-online__empty">还没有收藏文章。打开任意文章，在评论区上方点击“收藏”即可加入这里。</p>'
+          }
+        </section>
+      </section>
+    `;
+  }
+
+  async function initAccountPage() {
+    if (!accountPath.test(window.location.pathname)) return;
+    const root =
+      document.querySelector("[data-account-app]") ||
+      document.querySelector(".article-content") ||
+      document.querySelector(".markdown-body");
+    if (!root || root.dataset.accountMounted) return;
+    root.dataset.accountMounted = "true";
+    const user = currentUser();
+    if (!user) {
+      root.innerHTML = `
+        <section class="aleph-console aleph-account">
+          <div class="aleph-console__header">
+            <h1>账户</h1>
+            <p>登录后可以评论、点赞、收藏文章，并在这里查看收藏列表。</p>
+          </div>
+          <div class="aleph-console__actions">
+            <a class="aleph-online__link" href="${authLink("login")}"><i class="fa-regular fa-right-to-bracket"></i> 登录</a>
+            <a class="aleph-online__link" href="${authLink("register")}"><i class="fa-regular fa-user-plus"></i> 注册</a>
+          </div>
+        </section>
+      `;
+      return;
+    }
+    root.innerHTML = '<p class="aleph-online__status">正在加载账户信息</p>';
+    try {
+      const me = await request("/auth/me");
+      localStorage.setItem("ALEPH_USER", JSON.stringify(me));
+      const favorites = await request("/me/favorites");
+      renderAccount(root, favorites);
+    } catch (_) {
+      logout();
+      root.innerHTML = `
+        <section class="aleph-console aleph-account">
+          <div class="aleph-console__header">
+            <h1>账户</h1>
+            <p>登录状态已过期，请重新登录。</p>
+          </div>
+          <a class="aleph-online__link" href="${authLink("login")}">登录</a>
+        </section>
+      `;
+    }
+
+    root.addEventListener("click", (event) => {
+      const target = event.target.closest("[data-account-action]");
+      if (!target) return;
+      if (target.dataset.accountAction === "logout") {
+        logout();
+        window.location.href = "/";
+      }
+    });
   }
 
   function renderAdmin(root, state) {
@@ -528,7 +689,7 @@
             </div>
           </section>
           <section>
-            <h2>Recent Comments</h2>
+            <h2>最新评论</h2>
             <div class="aleph-admin-list" data-admin-comments>
               ${comments
                 .map(
@@ -681,10 +842,13 @@
   }
 
   function init() {
+    initHomePosts();
     initStaticArticle();
     initAuthPage();
     initOnlinePage();
+    initAccountPage();
     initAdminPage();
+    renderAccountDock();
     sendPageView();
   }
 

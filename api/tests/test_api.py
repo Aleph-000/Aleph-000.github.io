@@ -53,55 +53,7 @@ def test_auth_comments_reactions_and_analytics():
 
         posts = client.get("/posts")
         assert posts.status_code == 200
-        assert any(item["slug"] == "24-points-machine" for item in posts.json())
-
-        search = client.get("/search", params={"q": "AI"})
-        assert search.status_code == 200
-        assert search.json()
-
-        created_comment = client.post(
-            "/posts/24-points-machine/comments",
-            json={"body": "A useful project case."},
-            headers=reader_headers,
-        )
-        assert created_comment.status_code == 200
-        assert created_comment.json()["user"]["username"] == "reader"
-        whitespace_comment = client.post(
-            "/posts/24-points-machine/comments",
-            json={"body": "   "},
-            headers=reader_headers,
-        )
-        assert whitespace_comment.status_code == 422
-
-        liked = client.post("/posts/24-points-machine/like", headers=reader_headers)
-        assert liked.status_code == 200
-        assert liked.json()["likes"] == 1
-        assert liked.json()["liked"] is True
-
-        favorited = client.post(
-            "/posts/24-points-machine/favorite", headers=reader_headers
-        )
-        assert favorited.status_code == 200
-        assert favorited.json()["favorites"] == 1
-
-        favorites = client.get("/me/favorites", headers=reader_headers)
-        assert favorites.status_code == 200
-        assert favorites.json()[0]["slug"] == "24-points-machine"
-
-        pageview = client.post(
-            "/analytics/pageview",
-            json={
-                "path": "/2026/07/04/24-points-machine/",
-                "post_slug": "24-points-machine",
-            },
-        )
-        assert pageview.status_code == 200
-
-        summary = client.get("/analytics/summary", headers=headers)
-        assert summary.status_code == 200
-        assert summary.json()["total_comments"] == 1
-        assert summary.json()["total_likes"] == 1
-        assert summary.json()["total_favorites"] == 1
+        assert posts.json() == []
 
         forbidden_admin_create = client.post(
             "/admin/posts",
@@ -120,14 +72,22 @@ def test_auth_comments_reactions_and_analytics():
             json={
                 "slug": "online-lab-note",
                 "title": "Online Lab Note",
-                "excerpt": "A database-backed article.",
-                "body": "This article is stored in the API database.",
+                "excerpt": "A database-backed AI article.",
+                "body": "This article is stored in the API database with AI notes.",
                 "published": True,
             },
             headers=headers,
         )
         assert online_created.status_code == 200
         assert online_created.json()["published"] is True
+
+        posts = client.get("/posts")
+        assert posts.status_code == 200
+        assert posts.json()[0]["slug"] == "online-lab-note"
+
+        search = client.get("/search", params={"q": "AI"})
+        assert search.status_code == 200
+        assert search.json()[0]["slug"] == "online-lab-note"
 
         online_detail = client.get("/posts/online-lab-note")
         assert online_detail.status_code == 200
@@ -144,6 +104,31 @@ def test_auth_comments_reactions_and_analytics():
         online_like = client.post("/posts/online-lab-note/like", headers=reader_headers)
         assert online_like.status_code == 200
         assert online_like.json()["likes"] == 1
+
+        online_favorite = client.post(
+            "/posts/online-lab-note/favorite", headers=reader_headers
+        )
+        assert online_favorite.status_code == 200
+        assert online_favorite.json()["favorites"] == 1
+
+        favorites = client.get("/me/favorites", headers=reader_headers)
+        assert favorites.status_code == 200
+        assert favorites.json()[0]["slug"] == "online-lab-note"
+
+        pageview = client.post(
+            "/analytics/pageview",
+            json={
+                "path": "/online/?slug=online-lab-note",
+                "post_slug": "online-lab-note",
+            },
+        )
+        assert pageview.status_code == 200
+
+        summary = client.get("/analytics/summary", headers=headers)
+        assert summary.status_code == 200
+        assert summary.json()["total_comments"] == 1
+        assert summary.json()["total_likes"] == 1
+        assert summary.json()["total_favorites"] == 1
 
         admin_posts = client.get("/admin/posts", headers=headers)
         assert admin_posts.status_code == 200
@@ -176,6 +161,7 @@ def test_auth_comments_reactions_and_analytics():
         )
         assert renamed_interactions.status_code == 200
         assert renamed_interactions.json()["likes"] == 1
+        assert renamed_interactions.json()["favorites"] == 1
 
         forbidden_delete_comment = client.delete(
             f"/admin/comments/{online_comment_id}", headers=reader_headers
