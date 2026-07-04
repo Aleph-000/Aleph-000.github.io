@@ -7,7 +7,7 @@ info:
 defaults:
   favicon: /images/favicon.svg
   logo:
-  avatar: /images/avatar.svg
+  avatar: /images/avatar.jpg
 
 colors:
   primary: "#A31F34"
@@ -127,12 +127,12 @@ home:
       Projects:
         path: /projects
         icon: fa-regular fa-code
-      Tags:
-        path: /tags
-        icon: fa-regular fa-tags
       Categories:
         path: /categories
         icon: fa-regular fa-folder
+      Tags:
+        path: /tags
+        icon: fa-regular fa-tags
   article_date_format: auto
   excerpt_length: 200
   categories:
@@ -204,7 +204,8 @@ page_templates:
 inject:
   enable: true
   head:
-    - <link rel="stylesheet" href="/css/online-features.css">
+    - <link rel="stylesheet" href="/css/online-features.css?v=20260704-2240">
+    - <script>document.title = "Aleph_null's Blog";</script>
     - |
       <style>
         .home-banner-container .description {
@@ -222,4 +223,5 @@ inject:
         }
       </style>
   footer:
-    - <script src="/js/online-features.js" defer></script>
+    - <script src="https://cdn.jsdelivr.net/npm/marked@13.0.3/marked.min.js" defer></script>
+    - <script src="/js/online-features.js?v=20260704-2240" defer></script>

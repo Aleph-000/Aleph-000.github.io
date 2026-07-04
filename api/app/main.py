@@ -1,7 +1,14 @@
 from contextlib import asynccontextmanager
+from datetime import datetime, timedelta
+import json
+from pathlib import Path
+import re
+import uuid
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
+from fastapi import File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import delete, func, select, update
+from fastapi.staticfiles import StaticFiles
+from sqlalchemy import delete, func, inspect, select, text, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,17 +19,33 @@ from .database import engine, get_db
 from .models import Base, Comment, OnlinePost, PageView, Reaction, User, utcnow
 from .schemas import AdminPostOut, AnalyticsOut, CommentCreate, CommentOut
 from .schemas import InteractionOut, OnlinePostCreate, OnlinePostUpdate
-from .schemas import PageViewIn, PostDetail, PostOut
+from .schemas import OnlineCountOut, OnlinePingIn, PageViewIn, PostDetail, PostOut
 from .schemas import TokenOut, UserCreate, UserLogin, UserOut
+
+
+ONLINE_READER_TTL = timedelta(seconds=90)
+online_readers: dict[str, datetime] = {}
+UPLOAD_DIR = Path(__file__).resolve().parents[1] / "uploads"
+MAX_UPLOAD_BYTES = 8 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
+    "image/gif": ".gif",
+    "image/webp": ".webp",
+}
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     Base.metadata.create_all(bind=engine)
+    ensure_schema()
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     yield
 
 
 app = FastAPI(title="Aleph_null Blog API", version="0.1.0", lifespan=lifespan)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,
@@ -31,6 +54,26 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+def ensure_schema() -> None:
+    inspector = inspect(engine)
+    if "online_posts" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("online_posts")}
+    with engine.begin() as conn:
+        if "sort_order" not in columns:
+            conn.execute(
+                text("ALTER TABLE online_posts ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+            )
+        if "category" not in columns:
+            conn.execute(
+                text("ALTER TABLE online_posts ADD COLUMN category VARCHAR(120) NOT NULL DEFAULT ''")
+            )
+        if "tags" not in columns:
+            conn.execute(
+                text("ALTER TABLE online_posts ADD COLUMN tags TEXT NOT NULL DEFAULT '[]'")
+            )
 
 
 @app.middleware("http")
@@ -63,6 +106,35 @@ def _comment_out(comment: Comment) -> CommentOut:
     )
 
 
+def _clean_category(category: str | None) -> str:
+    return str(category or "").strip()[:120]
+
+
+def _clean_tags(tags: list[str] | None) -> list[str]:
+    cleaned: list[str] = []
+    for tag in tags or []:
+        value = str(tag or "").strip()
+        if value and value not in cleaned:
+            cleaned.append(value[:60])
+    return cleaned[:20]
+
+
+def _tags_from_db(value: str | None) -> list[str]:
+    if not value:
+        return []
+    try:
+        loaded = json.loads(value)
+    except json.JSONDecodeError:
+        loaded = [part.strip() for part in value.split(",")]
+    if not isinstance(loaded, list):
+        return []
+    return _clean_tags([str(item) for item in loaded])
+
+
+def _tags_to_db(tags: list[str] | None) -> str:
+    return json.dumps(_clean_tags(tags), ensure_ascii=False)
+
+
 def _online_post_out(post: OnlinePost) -> PostOut:
     return PostOut(
         slug=post.slug,
@@ -70,6 +142,8 @@ def _online_post_out(post: OnlinePost) -> PostOut:
         date=post.created_at.isoformat(),
         excerpt=post.excerpt,
         source="online",
+        category=_clean_category(post.category),
+        tags=_tags_from_db(post.tags),
     )
 
 
@@ -81,6 +155,8 @@ def _online_post_detail(post: OnlinePost) -> PostDetail:
         excerpt=post.excerpt,
         body=post.body,
         source="online",
+        category=_clean_category(post.category),
+        tags=_tags_from_db(post.tags),
     )
 
 
@@ -93,6 +169,9 @@ def _admin_post_out(post: OnlinePost) -> AdminPostOut:
         body=post.body,
         source="online",
         published=post.published,
+        sort_order=post.sort_order,
+        category=_clean_category(post.category),
+        tags=_tags_from_db(post.tags),
         created_at=post.created_at,
         updated_at=post.updated_at,
     )
@@ -162,9 +241,32 @@ def _interaction_out(db: Session, post_slug: str, user: User | None) -> Interact
     )
 
 
+def _online_reader_count() -> int:
+    cutoff = utcnow() - ONLINE_READER_TTL
+    stale_ids = [
+        client_id
+        for client_id, last_seen in online_readers.items()
+        if last_seen < cutoff
+    ]
+    for client_id in stale_ids:
+        online_readers.pop(client_id, None)
+    return len(online_readers)
+
+
 @app.get("/health")
 def health() -> dict:
     return {"ok": True, "service": "aleph-null-blog-api"}
+
+
+@app.post("/online/ping", response_model=OnlineCountOut)
+def online_ping(payload: OnlinePingIn) -> OnlineCountOut:
+    online_readers[payload.client_id] = utcnow()
+    return OnlineCountOut(online_readers=_online_reader_count())
+
+
+@app.get("/online/count", response_model=OnlineCountOut)
+def online_count() -> OnlineCountOut:
+    return OnlineCountOut(online_readers=_online_reader_count())
 
 
 @app.post("/auth/register", response_model=TokenOut)
@@ -215,7 +317,7 @@ def list_posts(db: Session = Depends(get_db)) -> list[PostOut]:
         for post in db.scalars(
             select(OnlinePost)
             .where(OnlinePost.published == True)  # noqa: E712
-            .order_by(OnlinePost.created_at.desc())
+            .order_by(OnlinePost.sort_order.asc(), OnlinePost.created_at.desc())
         )
     ]
     return online
@@ -227,7 +329,9 @@ def list_admin_posts(
     db: Session = Depends(get_db),
 ) -> list[AdminPostOut]:
     _require_owner(user)
-    posts = db.scalars(select(OnlinePost).order_by(OnlinePost.created_at.desc()))
+    posts = db.scalars(
+        select(OnlinePost).order_by(OnlinePost.sort_order.asc(), OnlinePost.created_at.desc())
+    )
     return [_admin_post_out(post) for post in posts]
 
 
@@ -244,6 +348,9 @@ def create_online_post(
         excerpt=payload.excerpt,
         body=payload.body,
         published=payload.published,
+        sort_order=payload.sort_order,
+        category=_clean_category(payload.category),
+        tags=_tags_to_db(payload.tags),
         author_id=user.id,
     )
     db.add(post)
@@ -296,6 +403,10 @@ def update_online_post(
             .where(Reaction.post_slug == old_slug)
             .values(post_slug=new_slug)
         )
+    if "category" in data:
+        data["category"] = _clean_category(data["category"])
+    if "tags" in data:
+        data["tags"] = _tags_to_db(data["tags"])
     for key, value in data.items():
         setattr(post, key, value)
     post.updated_at = utcnow()
@@ -354,6 +465,25 @@ def delete_admin_comment(
     return {"ok": True}
 
 
+@app.post("/admin/uploads")
+async def upload_image(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+) -> dict:
+    _require_owner(user)
+    suffix = ALLOWED_IMAGE_TYPES.get(file.content_type or "")
+    if not suffix:
+        raise HTTPException(status_code=415, detail="unsupported image type")
+    content = await file.read(MAX_UPLOAD_BYTES + 1)
+    if len(content) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="image too large")
+    stem = re.sub(r"[^A-Za-z0-9_-]+", "-", Path(file.filename or "image").stem).strip("-")
+    filename = f"{utcnow().strftime('%Y%m%d%H%M%S')}-{uuid.uuid4().hex[:8]}-{stem or 'image'}{suffix}"
+    target = UPLOAD_DIR / filename
+    target.write_bytes(content)
+    return {"url": f"/api/uploads/{filename}", "filename": filename}
+
+
 @app.get("/posts/{slug}", response_model=PostDetail)
 def get_post(slug: str, db: Session = Depends(get_db)) -> PostDetail:
     online = db.scalar(
@@ -375,7 +505,11 @@ def search(q: str, db: Session = Depends(get_db)) -> list[PostOut]:
     online_posts = db.scalars(
         select(OnlinePost).where(
             OnlinePost.published == True,  # noqa: E712
-            (OnlinePost.title.contains(query)) | (OnlinePost.body.contains(query)),
+            (OnlinePost.title.contains(query))
+            | (OnlinePost.excerpt.contains(query))
+            | (OnlinePost.body.contains(query))
+            | (OnlinePost.category.contains(query))
+            | (OnlinePost.tags.contains(query)),
         )
     )
     return [_online_post_out(post) for post in online_posts]

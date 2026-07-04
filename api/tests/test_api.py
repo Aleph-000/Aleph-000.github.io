@@ -30,6 +30,20 @@ def test_auth_comments_reactions_and_analytics():
         assert prefixed_health.status_code == 200
         assert prefixed_health.json()["ok"] is True
 
+        online_ping = client.post(
+            "/online/ping",
+            json={
+                "client_id": "reader-client-1",
+                "path": "/",
+                "post_slug": None,
+            },
+        )
+        assert online_ping.status_code == 200
+        assert online_ping.json()["online_readers"] == 1
+        online_count = client.get("/online/count")
+        assert online_count.status_code == 200
+        assert online_count.json()["online_readers"] == 1
+
         registered = client.post(
             "/auth/register",
             json={"username": "Aleph_null", "password": "password123"},
@@ -75,23 +89,52 @@ def test_auth_comments_reactions_and_analytics():
                 "excerpt": "A database-backed AI article.",
                 "body": "This article is stored in the API database with AI notes.",
                 "published": True,
+                "sort_order": 20,
+                "category": "Engineering",
+                "tags": ["AI", "Full-stack"],
             },
             headers=headers,
         )
         assert online_created.status_code == 200
         assert online_created.json()["published"] is True
+        assert online_created.json()["sort_order"] == 20
+        assert online_created.json()["category"] == "Engineering"
+        assert online_created.json()["tags"] == ["AI", "Full-stack"]
+
+        earlier_created = client.post(
+            "/admin/posts",
+            json={
+                "slug": "earlier-online-note",
+                "title": "Earlier Online Note",
+                "excerpt": "Sorted first.",
+                "body": "This article should sort first.",
+                "published": True,
+                "sort_order": 10,
+                "category": "Notes",
+                "tags": ["Math"],
+            },
+            headers=headers,
+        )
+        assert earlier_created.status_code == 200
 
         posts = client.get("/posts")
         assert posts.status_code == 200
-        assert posts.json()[0]["slug"] == "online-lab-note"
+        assert [item["slug"] for item in posts.json()] == [
+            "earlier-online-note",
+            "online-lab-note",
+        ]
 
         search = client.get("/search", params={"q": "AI"})
         assert search.status_code == 200
         assert search.json()[0]["slug"] == "online-lab-note"
+        tag_search = client.get("/search", params={"q": "Full-stack"})
+        assert tag_search.status_code == 200
+        assert tag_search.json()[0]["slug"] == "online-lab-note"
 
         online_detail = client.get("/posts/online-lab-note")
         assert online_detail.status_code == 200
         assert online_detail.json()["source"] == "online"
+        assert online_detail.json()["tags"] == ["AI", "Full-stack"]
 
         online_comment = client.post(
             "/posts/online-lab-note/comments",
@@ -132,7 +175,10 @@ def test_auth_comments_reactions_and_analytics():
 
         admin_posts = client.get("/admin/posts", headers=headers)
         assert admin_posts.status_code == 200
-        assert admin_posts.json()[0]["slug"] == "online-lab-note"
+        assert [item["slug"] for item in admin_posts.json()] == [
+            "earlier-online-note",
+            "online-lab-note",
+        ]
 
         admin_comments = client.get("/admin/comments", headers=headers)
         assert admin_comments.status_code == 200
@@ -144,11 +190,17 @@ def test_auth_comments_reactions_and_analytics():
                 "slug": "online-lab-note-renamed",
                 "title": "Online Lab Note Renamed",
                 "published": True,
+                "sort_order": 30,
+                "category": "Updated",
+                "tags": ["Updated Tag"],
             },
             headers=headers,
         )
         assert renamed.status_code == 200
         assert renamed.json()["slug"] == "online-lab-note-renamed"
+        assert renamed.json()["sort_order"] == 30
+        assert renamed.json()["category"] == "Updated"
+        assert renamed.json()["tags"] == ["Updated Tag"]
 
         old_detail = client.get("/posts/online-lab-note")
         assert old_detail.status_code == 404
@@ -167,6 +219,15 @@ def test_auth_comments_reactions_and_analytics():
             f"/admin/comments/{online_comment_id}", headers=reader_headers
         )
         assert forbidden_delete_comment.status_code == 403
+
+        uploaded = client.post(
+            "/admin/uploads",
+            files={"file": ("sample.png", b"\x89PNG\r\n\x1a\n", "image/png")},
+            headers=headers,
+        )
+        assert uploaded.status_code == 200
+        assert uploaded.json()["url"].startswith("/api/uploads/")
+
         deleted_comment = client.delete(
             f"/admin/comments/{online_comment_id}", headers=headers
         )
@@ -185,6 +246,11 @@ def test_auth_comments_reactions_and_analytics():
             "/admin/posts/online-lab-note-renamed", headers=headers
         )
         assert deleted_post.status_code == 200
+
+        deleted_earlier_post = client.delete(
+            "/admin/posts/earlier-online-note", headers=headers
+        )
+        assert deleted_earlier_post.status_code == 200
 
         missing_interaction = client.post("/posts/missing-post/like", headers=headers)
         assert missing_interaction.status_code == 404

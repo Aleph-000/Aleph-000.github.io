@@ -34,6 +34,8 @@ class PostOut(BaseModel):
     date: str | None = None
     excerpt: str
     source: str
+    category: str = ""
+    tags: list[str] = Field(default_factory=list)
 
 
 class PostDetail(PostOut):
@@ -46,6 +48,9 @@ class OnlinePostCreate(BaseModel):
     excerpt: str = Field(default="", max_length=500)
     body: str = Field(min_length=1)
     published: bool = True
+    sort_order: int = 0
+    category: str = Field(default="", max_length=120)
+    tags: list[str] = Field(default_factory=list, max_length=20)
 
 
 class OnlinePostUpdate(BaseModel):
@@ -56,10 +61,14 @@ class OnlinePostUpdate(BaseModel):
     excerpt: str | None = Field(default=None, max_length=500)
     body: str | None = Field(default=None, min_length=1)
     published: bool | None = None
+    sort_order: int | None = None
+    category: str | None = Field(default=None, max_length=120)
+    tags: list[str] | None = Field(default=None, max_length=20)
 
 
 class AdminPostOut(PostDetail):
     published: bool
+    sort_order: int
     created_at: datetime
     updated_at: datetime
 
@@ -88,6 +97,16 @@ class InteractionOut(BaseModel):
 class PageViewIn(BaseModel):
     path: str = Field(min_length=1, max_length=300)
     post_slug: str | None = Field(default=None, max_length=160)
+
+
+class OnlinePingIn(BaseModel):
+    client_id: str = Field(min_length=8, max_length=120)
+    path: str = Field(min_length=1, max_length=300)
+    post_slug: str | None = Field(default=None, max_length=160)
+
+
+class OnlineCountOut(BaseModel):
+    online_readers: int
 
 
 class AnalyticsOut(BaseModel):

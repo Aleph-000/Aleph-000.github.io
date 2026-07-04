@@ -29,6 +29,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - api_uploads:/srv/blog/api/uploads
 
   web:
     image: caddy:2-alpine
@@ -46,5 +48,6 @@ services:
 
 volumes:
   postgres_data:
+  api_uploads:
   caddy_data:
   caddy_config:

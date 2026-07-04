@@ -7,6 +7,40 @@
   backdrop-filter: blur(10px);
 }
 
+.home-article-list:not(.aleph-home-online-mounted) .home-article-item {
+  display: none;
+}
+
+.home-article-list:not(.aleph-home-online-mounted)::before {
+  display: block;
+  padding: 1.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  content: "正在读取文章列表";
+}
+
+.dark .home-article-list:not(.aleph-home-online-mounted)::before {
+  background: rgba(25, 25, 25, 0.62);
+}
+
+.aleph-home-status {
+  min-height: 130px;
+}
+
+.archive-list-container:not(.aleph-archive-mounted) .archive-item {
+  display: none;
+}
+
+.archive-list-container:not(.aleph-archive-mounted)::before {
+  display: block;
+  padding: 1.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  content: "正在读取线上归档";
+}
+
 .dark .aleph-online {
   background: rgba(25, 25, 25, 0.62);
   border-color: rgba(255, 255, 255, 0.14);
@@ -173,6 +207,67 @@
   flex-wrap: wrap;
 }
 
+.aleph-post-taxonomy,
+.aleph-tags,
+.aleph-taxonomy-cloud {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.aleph-category,
+.aleph-tag,
+.aleph-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  width: fit-content;
+  border: 1px solid rgba(255, 255, 255, 0.52);
+  border-radius: 999px;
+  padding: 0.12rem 0.55rem;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.82rem;
+  text-decoration: none;
+}
+
+.aleph-term {
+  min-height: 32px;
+  padding: 0.2rem 0.7rem;
+}
+
+.aleph-term[data-active="true"],
+.aleph-category:hover,
+.aleph-tag:hover,
+.aleph-term:hover {
+  border-color: #fff;
+  color: #fff;
+  font-weight: 700;
+}
+
+.aleph-term span {
+  opacity: 0.68;
+}
+
+.tagcloud-content .tag-list a.aleph-taxonomy-active,
+.category-list-content .all-category-list > .all-category-list-item.aleph-taxonomy-active {
+  outline: 2px solid rgba(255, 255, 255, 0.72);
+  outline-offset: 2px;
+}
+
+.tagcloud-content .tag-list[data-show-value] a::after,
+.category-list-content .all-category-list > .all-category-list-item span.all-category-list-count,
+.archive-year-post-count {
+  background-color: #fff;
+  border-color: rgba(80, 80, 80, 0.12);
+  color: #333;
+}
+
+.aleph-taxonomy-archive {
+  margin-top: 2rem;
+}
+
 .aleph-form {
   display: grid;
   gap: 0.85rem;
@@ -208,6 +303,72 @@
 
 .aleph-form__check input {
   width: auto;
+}
+
+.aleph-md-editor {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.aleph-md-editor__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.aleph-md-editor__preview {
+  min-height: 220px;
+  padding: 0.8rem;
+  border: 1px solid rgba(80, 80, 80, 0.14);
+  border-radius: 8px;
+  background: rgba(120, 120, 120, 0.06);
+  line-height: 1.7;
+}
+
+.aleph-console button[data-active="true"] {
+  border-color: #a31f34;
+  color: #a31f34;
+  font-weight: 700;
+}
+
+.aleph-image-manager {
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.85rem;
+  border: 1px solid rgba(80, 80, 80, 0.14);
+  border-radius: 8px;
+  background: rgba(120, 120, 120, 0.06);
+}
+
+.aleph-image-manager__header,
+.aleph-image-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.aleph-image-manager__header {
+  justify-content: space-between;
+}
+
+.aleph-image-manager__list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.aleph-image-row input:first-child {
+  flex: 1 1 160px;
+}
+
+.aleph-image-row input:nth-child(2) {
+  flex: 3 1 260px;
+}
+
+.aleph-image-row button {
+  min-width: 38px;
 }
 
 .aleph-stats {
@@ -293,15 +454,53 @@
 
 .aleph-online-list__item span {
   width: fit-content;
-  border: 1px solid rgba(163, 31, 52, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.52);
   border-radius: 999px;
   padding: 0.1rem 0.5rem;
-  color: #a31f34;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
   font-size: 0.78rem;
 }
 
 .aleph-online-post__body {
   line-height: 1.7;
+}
+
+.aleph-math-block {
+  overflow-x: auto;
+  margin: 1rem 0;
+  padding: 0.2rem 0;
+}
+
+.aleph-online-post__body img,
+.aleph-md-editor__preview img {
+  max-width: 100%;
+  border-radius: 8px;
+}
+
+.aleph-image-grid {
+  display: grid;
+  gap: 1rem;
+  margin: 1.2rem 0;
+}
+
+.aleph-image-grid figure {
+  margin: 0;
+}
+
+.aleph-image-grid img {
+  display: block;
+  width: 100%;
+  max-height: 720px;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+.aleph-image-grid figcaption {
+  margin-top: 0.45rem;
+  font-size: 0.88rem;
+  opacity: 0.72;
+  text-align: center;
 }
 
 .aleph-account-dock {
@@ -338,6 +537,30 @@
 }
 
 .dark .aleph-account-dock {
+  color: #f3f3f3;
+  background: rgba(24, 24, 24, 0.78);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.aleph-reader-dock {
+  position: fixed;
+  left: 1rem;
+  bottom: 1rem;
+  z-index: 80;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 40px;
+  padding: 0 0.8rem;
+  border: 1px solid rgba(80, 80, 80, 0.16);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.12);
+  backdrop-filter: blur(12px);
+  font-size: 0.9rem;
+}
+
+.dark .aleph-reader-dock {
   color: #f3f3f3;
   background: rgba(24, 24, 24, 0.78);
   border-color: rgba(255, 255, 255, 0.14);
@@ -380,6 +603,16 @@
     grid-template-columns: 1fr;
   }
 
+  .aleph-image-row {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .aleph-md-editor__header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .aleph-account-dock {
     right: 0.75rem;
     bottom: 0.75rem;
@@ -389,5 +622,12 @@
 
   .aleph-account-dock span {
     max-width: 92px;
+  }
+
+  .aleph-reader-dock {
+    left: 0.75rem;
+    bottom: 0.75rem;
+    min-height: 38px;
+    padding: 0 0.7rem;
   }
 }
