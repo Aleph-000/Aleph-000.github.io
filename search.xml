@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<search>
+  <entry>
+    <title>项目与作品集</title>
+    <url>/2026/07/04/projects-placeholder/</url>
+    <content><![CDATA[<p>这篇文章用于整理后续要展示的项目。</p>
+<p>每个项目建议包含目标、技术栈、你负责的部分、最终效果和仓库链接。这样访客能快速判断你的能力边界，也方便你之后投递简历或分享作品。</p>
+<h2 id="项目模板"><a href="#项目模板" class="headerlink" title="项目模板"></a>项目模板</h2><h3 id="项目名称"><a href="#项目名称" class="headerlink" title="项目名称"></a>项目名称</h3><ul>
+<li>背景：</li>
+<li>技术栈：</li>
+<li>我的工作：</li>
+<li>结果：</li>
+<li>链接：</li>
+</ul>
+]]></content>
+      <categories>
+        <category>项目</category>
+      </categories>
+      <tags>
+        <tag>Portfolio</tag>
+        <tag>Projects</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>你好，新的个人博客</title>
+    <url>/2026/07/04/hello-vito-blog/</url>
+    <content><![CDATA[<p>这是这个个人博客的第一篇文章。</p>
+<p>我希望它不仅是一个展示自己的页面，也是一处持续记录学习和项目进展的地方。网站已经使用 Hexo 和 Redefine 主题搭好，后续可以直接通过 Markdown 写文章。</p>
+<h2 id="下一步"><a href="#下一步" class="headerlink" title="下一步"></a>下一步</h2><ul>
+<li>补充真实的个人介绍</li>
+<li>整理学习笔记和项目文章</li>
+<li>替换首页背景图和头像</li>
+<li>绑定 GitHub Pages 自动发布</li>
+</ul>
+]]></content>
+      <categories>
+        <category>随笔</category>
+      </categories>
+      <tags>
+        <tag>Blog</tag>
+        <tag>Personal</tag>
+      </tags>
+  </entry>
+</search>

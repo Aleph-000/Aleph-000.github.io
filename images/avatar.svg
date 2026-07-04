@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Vito avatar">
+  <defs>
+    <linearGradient id="g" x1="72" y1="64" x2="438" y2="448" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f78736"/>
+      <stop offset="0.52" stop-color="#a31f34"/>
+      <stop offset="1" stop-color="#367df7"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="#14171f"/>
+  <circle cx="126" cy="120" r="66" fill="#ffffff" opacity=".08"/>
+  <circle cx="408" cy="392" r="92" fill="#ffffff" opacity=".06"/>
+  <path d="M132 134h76l50 170 50-170h72L296 378h-78L132 134Z" fill="url(#g)"/>
+  <path d="M126 410h260" stroke="#fff" stroke-width="22" stroke-linecap="round" opacity=".86"/>
+</svg>
