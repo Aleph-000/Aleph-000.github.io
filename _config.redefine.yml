@@ -45,12 +45,10 @@ home_banner:
   image:
     light: /images/wallhaven-wqery6-light.webp
     dark: /images/wallhaven-wqery6-dark.webp
-  title: Aleph_null
+  title: Aleph_null's Blog
   subtitle:
     text:
-      - 浙江大学计算机科学与技术专业
-      - AI / Full-stack / CTF / 图寻
-      - 用数学和工程把想法落地。
+      - Create beyond the lines
     hitokoto:
       enable: false
       show_author: false
