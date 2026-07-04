@@ -1,9 +1,9 @@
 from contextlib import asynccontextmanager
 from typing import Iterable
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -12,9 +12,10 @@ from .auth import resolve_current_user, verify_password
 from .config import settings
 from .content import get_markdown_post, load_markdown_posts, search_markdown_posts
 from .database import engine, get_db
-from .models import Base, Comment, OnlinePost, PageView, Reaction, User
-from .schemas import AnalyticsOut, CommentCreate, CommentOut, InteractionOut
-from .schemas import OnlinePostCreate, PageViewIn, PostDetail, PostOut
+from .models import Base, Comment, OnlinePost, PageView, Reaction, User, utcnow
+from .schemas import AdminPostOut, AnalyticsOut, CommentCreate, CommentOut
+from .schemas import InteractionOut, OnlinePostCreate, OnlinePostUpdate
+from .schemas import PageViewIn, PostDetail, PostOut
 from .schemas import TokenOut, UserCreate, UserLogin, UserOut
 
 
@@ -33,6 +34,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def strip_api_prefix(request: Request, call_next):
+    path = request.scope.get("path", "")
+    if path == "/api":
+        request.scope["path"] = "/"
+    elif path.startswith("/api/"):
+        request.scope["path"] = path[4:]
+    return await call_next(request)
 
 
 def _user_out(user: User) -> UserOut:
@@ -76,6 +87,20 @@ def _online_post_detail(post: OnlinePost) -> PostDetail:
     )
 
 
+def _admin_post_out(post: OnlinePost) -> AdminPostOut:
+    return AdminPostOut(
+        slug=post.slug,
+        title=post.title,
+        date=post.created_at.isoformat(),
+        excerpt=post.excerpt,
+        body=post.body,
+        source="online",
+        published=post.published,
+        created_at=post.created_at,
+        updated_at=post.updated_at,
+    )
+
+
 def _markdown_post_out(post) -> PostOut:
     return PostOut(
         slug=post.slug,
@@ -89,6 +114,21 @@ def _markdown_post_out(post) -> PostOut:
 def _require_owner(user: User) -> None:
     if not user.is_owner:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
+
+def _public_post_exists(db: Session, slug: str) -> bool:
+    online_id = db.scalar(
+        select(OnlinePost.id).where(
+            OnlinePost.slug == slug,
+            OnlinePost.published == True,  # noqa: E712
+        )
+    )
+    return online_id is not None or get_markdown_post(slug) is not None
+
+
+def _require_public_post(db: Session, slug: str) -> None:
+    if not _public_post_exists(db, slug):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
 
 def _count_reaction(db: Session, post_slug: str, kind: str) -> int:
@@ -132,11 +172,21 @@ def health() -> dict:
 
 @app.post("/auth/register", response_model=TokenOut)
 def register(payload: UserCreate, db: Session = Depends(get_db)) -> TokenOut:
+    wants_owner = payload.username == settings.owner_username
+    if (
+        wants_owner
+        and settings.owner_setup_key
+        and payload.owner_key != settings.owner_setup_key
+    ):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    owner_exists = (
+        db.scalar(select(User.id).where(User.is_owner == True)) is not None  # noqa: E712
+    )
     user = User(
         username=payload.username,
         display_name=payload.display_name or payload.username,
         password_hash=hash_password(payload.password),
-        is_owner=payload.username == settings.owner_username,
+        is_owner=wants_owner and not owner_exists,
     )
     db.add(user)
     try:
@@ -167,18 +217,30 @@ def list_posts(db: Session = Depends(get_db)) -> list[PostOut]:
     online = [
         _online_post_out(post)
         for post in db.scalars(
-            select(OnlinePost).where(OnlinePost.published == True)  # noqa: E712
+            select(OnlinePost)
+            .where(OnlinePost.published == True)  # noqa: E712
+            .order_by(OnlinePost.created_at.desc())
         )
     ]
     return online + markdown
 
 
-@app.post("/admin/posts", response_model=PostDetail)
+@app.get("/admin/posts", response_model=list[AdminPostOut])
+def list_admin_posts(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[AdminPostOut]:
+    _require_owner(user)
+    posts = db.scalars(select(OnlinePost).order_by(OnlinePost.created_at.desc()))
+    return [_admin_post_out(post) for post in posts]
+
+
+@app.post("/admin/posts", response_model=AdminPostOut)
 def create_online_post(
     payload: OnlinePostCreate,
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> PostDetail:
+) -> AdminPostOut:
     _require_owner(user)
     post = OnlinePost(
         slug=payload.slug,
@@ -195,7 +257,105 @@ def create_online_post(
         db.rollback()
         raise HTTPException(status_code=409, detail="slug already exists") from exc
     db.refresh(post)
-    return _online_post_detail(post)
+    return _admin_post_out(post)
+
+
+@app.get("/admin/posts/{slug}", response_model=AdminPostOut)
+def get_admin_post(
+    slug: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminPostOut:
+    _require_owner(user)
+    post = db.scalar(select(OnlinePost).where(OnlinePost.slug == slug))
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return _admin_post_out(post)
+
+
+@app.put("/admin/posts/{slug}", response_model=AdminPostOut)
+def update_online_post(
+    slug: str,
+    payload: OnlinePostUpdate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> AdminPostOut:
+    _require_owner(user)
+    post = db.scalar(select(OnlinePost).where(OnlinePost.slug == slug))
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+    data = payload.model_dump(exclude_unset=True)
+    new_slug = data.pop("slug", None)
+    old_slug = post.slug
+    if new_slug and new_slug != old_slug:
+        post.slug = new_slug
+        db.execute(
+            update(Comment)
+            .where(Comment.post_slug == old_slug)
+            .values(post_slug=new_slug)
+        )
+        db.execute(
+            update(Reaction)
+            .where(Reaction.post_slug == old_slug)
+            .values(post_slug=new_slug)
+        )
+    for key, value in data.items():
+        setattr(post, key, value)
+    post.updated_at = utcnow()
+
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="slug already exists") from exc
+    db.refresh(post)
+    return _admin_post_out(post)
+
+
+@app.delete("/admin/posts/{slug}")
+def delete_online_post(
+    slug: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_owner(user)
+    post = db.scalar(select(OnlinePost).where(OnlinePost.slug == slug))
+    if not post:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    db.execute(delete(Comment).where(Comment.post_slug == slug))
+    db.execute(delete(Reaction).where(Reaction.post_slug == slug))
+    db.delete(post)
+    db.commit()
+    return {"ok": True}
+
+
+@app.get("/admin/comments", response_model=list[CommentOut])
+def list_admin_comments(
+    limit: int = Query(default=100, ge=1, le=200),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[CommentOut]:
+    _require_owner(user)
+    comments = db.scalars(
+        select(Comment).order_by(Comment.created_at.desc()).limit(limit)
+    )
+    return [_comment_out(comment) for comment in comments]
+
+
+@app.delete("/admin/comments/{comment_id}")
+def delete_admin_comment(
+    comment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    _require_owner(user)
+    comment = db.get(Comment, comment_id)
+    if not comment:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    db.delete(comment)
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/posts/{slug}", response_model=PostDetail)
@@ -238,6 +398,7 @@ def search(q: str, db: Session = Depends(get_db)) -> list[PostOut]:
 
 @app.get("/posts/{slug}/comments", response_model=list[CommentOut])
 def list_comments(slug: str, db: Session = Depends(get_db)) -> list[CommentOut]:
+    _require_public_post(db, slug)
     comments = db.scalars(
         select(Comment).where(Comment.post_slug == slug).order_by(Comment.created_at)
     )
@@ -251,11 +412,32 @@ def create_comment(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> CommentOut:
-    comment = Comment(post_slug=slug, body=payload.body.strip(), user_id=user.id)
+    _require_public_post(db, slug)
+    body = payload.body.strip()
+    if not body:
+        raise HTTPException(status_code=422)
+    comment = Comment(post_slug=slug, body=body, user_id=user.id)
     db.add(comment)
     db.commit()
     db.refresh(comment)
     return _comment_out(comment)
+
+
+@app.delete("/posts/{slug}/comments/{comment_id}")
+def delete_comment(
+    slug: str,
+    comment_id: int,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    comment = db.get(Comment, comment_id)
+    if not comment or comment.post_slug != slug:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    if comment.user_id != user.id and not user.is_owner:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+    db.delete(comment)
+    db.commit()
+    return {"ok": True}
 
 
 @app.get("/posts/{slug}/interactions", response_model=InteractionOut)
@@ -264,6 +446,7 @@ def interactions(
     authorization: str | None = Header(default=None),
     db: Session = Depends(get_db),
 ) -> InteractionOut:
+    _require_public_post(db, slug)
     user = resolve_current_user(db, authorization)
     return _interaction_out(db, slug, user)
 
@@ -274,6 +457,7 @@ def like_post(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InteractionOut:
+    _require_public_post(db, slug)
     reaction = Reaction(user_id=user.id, post_slug=slug, kind="like")
     db.add(reaction)
     try:
@@ -289,6 +473,7 @@ def unlike_post(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InteractionOut:
+    _require_public_post(db, slug)
     db.execute(
         delete(Reaction).where(
             Reaction.user_id == user.id,
@@ -306,6 +491,7 @@ def favorite_post(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InteractionOut:
+    _require_public_post(db, slug)
     reaction = Reaction(user_id=user.id, post_slug=slug, kind="favorite")
     db.add(reaction)
     try:
@@ -321,6 +507,7 @@ def unfavorite_post(
     user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> InteractionOut:
+    _require_public_post(db, slug)
     db.execute(
         delete(Reaction).where(
             Reaction.user_id == user.id,
@@ -344,7 +531,12 @@ def my_favorites(
         )
     ).all()
     posts = {post.slug: _markdown_post_out(post) for post in load_markdown_posts()}
-    for post in db.scalars(select(OnlinePost).where(OnlinePost.slug.in_(slugs))):
+    for post in db.scalars(
+        select(OnlinePost).where(
+            OnlinePost.slug.in_(slugs),
+            OnlinePost.published == True,  # noqa: E712
+        )
+    ):
         posts[post.slug] = _online_post_out(post)
     return [posts[slug] for slug in slugs if slug in posts]
 

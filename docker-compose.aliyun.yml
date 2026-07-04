@@ -1,0 +1,50 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-aleph_blog}
+      POSTGRES_USER: ${POSTGRES_USER:-aleph_blog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aleph_blog} -d ${POSTGRES_DB:-aleph_blog}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: api/Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-aleph_blog}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-aleph_blog}
+      SECRET_KEY: ${SECRET_KEY}
+      OWNER_USERNAME: ${OWNER_USERNAME:-Aleph_null}
+      OWNER_SETUP_KEY: ${OWNER_SETUP_KEY}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-10080}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./public:/srv:ro
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

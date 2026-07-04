@@ -23,6 +23,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-aleph_blog}:${POSTGRES_PASSWORD:-change-me}@db:5432/${POSTGRES_DB:-aleph_blog}
       SECRET_KEY: ${SECRET_KEY:-change-me-before-public-deploy}
       OWNER_USERNAME: ${OWNER_USERNAME:-Aleph_null}
+      OWNER_SETUP_KEY: ${OWNER_SETUP_KEY:-}
       CORS_ORIGINS: ${CORS_ORIGINS:-*}
       ACCESS_TOKEN_MINUTES: ${ACCESS_TOKEN_MINUTES:-10080}
     ports:

@@ -37,7 +37,13 @@
   flex-wrap: wrap;
 }
 
-.aleph-online button {
+.aleph-online button,
+.aleph-online__link,
+.aleph-console button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
   min-height: 34px;
   border: 1px solid rgba(80, 80, 80, 0.2);
   border-radius: 6px;
@@ -45,22 +51,30 @@
   background: rgba(255, 255, 255, 0.86);
   cursor: pointer;
   font: inherit;
+  text-decoration: none;
+  color: inherit;
 }
 
-.dark .aleph-online button {
+.dark .aleph-online button,
+.dark .aleph-online__link,
+.dark .aleph-console button {
   color: #f3f3f3;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.16);
 }
 
-.aleph-online button[data-active="true"] {
+.aleph-online button[data-active="true"],
+.aleph-online__link:hover,
+.aleph-console button:hover {
   border-color: #a31f34;
   color: #a31f34;
   font-weight: 700;
 }
 
 .aleph-online input,
-.aleph-online textarea {
+.aleph-online textarea,
+.aleph-console input,
+.aleph-console textarea {
   border: 1px solid rgba(80, 80, 80, 0.18);
   border-radius: 6px;
   padding: 0.55rem 0.65rem;
@@ -69,7 +83,9 @@
 }
 
 .dark .aleph-online input,
-.dark .aleph-online textarea {
+.dark .aleph-online textarea,
+.dark .aleph-console input,
+.dark .aleph-console textarea {
   color: #f3f3f3;
   background: rgba(255, 255, 255, 0.08);
   border-color: rgba(255, 255, 255, 0.16);
@@ -79,7 +95,8 @@
   width: min(170px, 100%);
 }
 
-.aleph-online textarea {
+.aleph-online textarea,
+.aleph-console textarea {
   width: 100%;
   min-height: 88px;
   resize: vertical;
@@ -117,19 +134,199 @@
   line-height: 1.6;
 }
 
+.aleph-online__empty {
+  margin: 0;
+  opacity: 0.74;
+}
+
+.aleph-online__user {
+  font-weight: 700;
+}
+
+.aleph-console {
+  display: grid;
+  gap: 1.2rem;
+  margin: 0 auto;
+  max-width: 980px;
+}
+
+.aleph-console__header {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.aleph-console__header h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 4vw, 2.4rem);
+  letter-spacing: 0;
+}
+
+.aleph-console__header p {
+  margin: 0;
+  opacity: 0.78;
+}
+
+.aleph-console__actions {
+  display: flex;
+  gap: 0.55rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.aleph-form {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.aleph-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 700;
+}
+
+.aleph-form label span {
+  font-size: 0.9rem;
+}
+
+.aleph-form input,
+.aleph-form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-weight: 400;
+}
+
+.aleph-form textarea {
+  min-height: 220px;
+  line-height: 1.55;
+}
+
+.aleph-form__check {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+}
+
+.aleph-form__check input {
+  width: auto;
+}
+
+.aleph-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.aleph-stats div,
+.aleph-admin-list__item,
+.aleph-online-list__item {
+  border: 1px solid rgba(80, 80, 80, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.dark .aleph-stats div,
+.dark .aleph-admin-list__item,
+.dark .aleph-online-list__item {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.aleph-stats div {
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.85rem;
+}
+
+.aleph-stats strong {
+  font-size: 1.35rem;
+}
+
+.aleph-stats span {
+  font-size: 0.82rem;
+  opacity: 0.72;
+}
+
+.aleph-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.aleph-admin-grid h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+  letter-spacing: 0;
+}
+
+.aleph-admin-list,
+.aleph-online-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.aleph-admin-list__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.8rem;
+}
+
+.aleph-admin-list__item p,
+.aleph-online-list__item p {
+  margin: 0.2rem 0 0;
+  font-size: 0.9rem;
+  opacity: 0.75;
+}
+
+.aleph-online-list__item {
+  display: grid;
+  gap: 0.25rem;
+  padding: 1rem;
+}
+
+.aleph-online-list__item a {
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.aleph-online-list__item span {
+  width: fit-content;
+  border: 1px solid rgba(163, 31, 52, 0.24);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+  color: #a31f34;
+  font-size: 0.78rem;
+}
+
+.aleph-online-post__body {
+  line-height: 1.7;
+}
+
 @media (max-width: 640px) {
   .aleph-online {
     padding: 0.85rem;
   }
 
   .aleph-online__bar,
-  .aleph-online__auth {
+  .aleph-online__auth,
+  .aleph-console__actions,
+  .aleph-admin-list__item {
     align-items: stretch;
+    flex-direction: column;
   }
 
   .aleph-online__actions,
   .aleph-online button,
-  .aleph-online input {
+  .aleph-online input,
+  .aleph-online__link,
+  .aleph-console button {
     width: 100%;
+  }
+
+  .aleph-stats,
+  .aleph-admin-grid {
+    grid-template-columns: 1fr;
   }
 }

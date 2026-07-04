@@ -1,0 +1,69 @@
+name: Deploy Aliyun
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build static site
+        run: |
+          pnpm clean
+          pnpm build
+
+      - name: Package deployment files
+        run: tar -czf aliyun-deploy.tar.gz api deploy public source .dockerignore docker-compose.aliyun.yml
+
+      - name: Configure SSH
+        env:
+          ALIYUN_SSH_PRIVATE_KEY: ${{ secrets.ALIYUN_SSH_PRIVATE_KEY }}
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+        run: |
+          test -n "$ALIYUN_HOST"
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$ALIYUN_SSH_PRIVATE_KEY" > ~/.ssh/aliyun_blog
+          chmod 600 ~/.ssh/aliyun_blog
+          ssh-keyscan -H "$ALIYUN_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload package
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+        run: scp -i ~/.ssh/aliyun_blog aliyun-deploy.tar.gz root@"$ALIYUN_HOST":/tmp/aliyun-deploy.tar.gz
+
+      - name: Restart services
+        env:
+          ALIYUN_HOST: ${{ secrets.ALIYUN_HOST }}
+        run: |
+          ssh -i ~/.ssh/aliyun_blog root@"$ALIYUN_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          base=/opt/aleph-blog
+          resolved=$(realpath "$base")
+          if [ "$resolved" != "/opt/aleph-blog" ]; then
+            echo "bad deploy path: $resolved" >&2
+            exit 1
+          fi
+          cd "$base"
+          test -f .env
+          rm -rf api deploy public source docker-compose.aliyun.yml .dockerignore
+          tar -xzf /tmp/aliyun-deploy.tar.gz -C "$base"
+          docker compose -f docker-compose.aliyun.yml up -d --build db api
+          docker compose -f docker-compose.aliyun.yml up -d --force-recreate web
+          docker compose -f docker-compose.aliyun.yml ps
+          REMOTE

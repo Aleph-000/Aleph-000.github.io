@@ -10,25 +10,34 @@ powershell -ExecutionPolicy Bypass -File tools\ci.ps1
 ```
 
 3. Commit and push.
-4. DigitalOcean Static Site pulls `/do-static` from GitHub and redeploys.
+4. GitHub Actions runs `.github/workflows/ci.yml`.
+5. For Aliyun deployment, manually run the `Deploy Aliyun` workflow after the CI job passes.
 
-## Why The Workflow Is A Template
+The current practical CI/CD path is:
 
-The current GitHub token used by the local environment may not have `workflow` scope. Pushing a file under `.github/workflows/` can be rejected by GitHub.
+- CI: `.github/workflows/ci.yml` runs API tests, Hexo build, Docker Compose validation, and API image build.
+- Local gate: `tools/ci.ps1` runs the same practical checks before push and syncs generated static files.
+- CD: `.github/workflows/deploy-aliyun.yml` is a manual deployment workflow for the current Aliyun ECS server.
+- Static fallback: GitHub Pages can still serve the generated root static files.
 
-For now, the runnable workflow is stored as:
+## Aliyun Deployment Secrets
+
+The manual deployment workflow requires these GitHub repository secrets:
+
+- `ALIYUN_HOST`: the ECS public IP or domain, currently `aleph-null.cc`
+- `ALIYUN_SSH_PRIVATE_KEY`: the private key that can SSH as `root`
+
+The workflow does not upload `.env`; production secrets stay on the server at:
 
 ```text
-docs/github-actions-static.yml.example
+/opt/aleph-blog/.env
 ```
 
-After refreshing GitHub CLI auth with workflow scope, copy it to:
+## Workflow Scope
 
-```text
-.github/workflows/static.yml
-```
-
-Then commit and push.
+Pushing workflow files requires the local GitHub token to have `workflow` scope.
+If `git push` is rejected because `.github/workflows/*` changed, refresh GitHub
+CLI auth:
 
 ## Refresh GitHub Workflow Scope
 

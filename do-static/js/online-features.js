@@ -1,12 +1,18 @@
 (function () {
   const articlePath = /^\/\d{4}\/\d{2}\/\d{2}\/([^/]+)\/?$/;
-  const match = window.location.pathname.match(articlePath);
+  const onlinePath = /^\/online\/?$/;
+  const authPath = /^\/(login|register)\/?$/;
+  const adminPath = /^\/admin\/?$/;
+
   function defaultApiBase() {
     const host = window.location.hostname;
     if ((host === "localhost" || host === "127.0.0.1") && window.location.port === "4000") {
       return "http://127.0.0.1:8000";
     }
-    return "";
+    if (host === "aleph-000.github.io") {
+      return "https://aleph-null.cc/api";
+    }
+    return "/api";
   }
 
   const apiBase = String(
@@ -23,7 +29,7 @@
     return localStorage.getItem("ALEPH_TOKEN") || "";
   }
 
-  function user() {
+  function currentUser() {
     try {
       return JSON.parse(localStorage.getItem("ALEPH_USER") || "null");
     } catch (_) {
@@ -31,7 +37,7 @@
     }
   }
 
-  function headers() {
+  function authHeaders() {
     const value = token();
     return value ? { Authorization: `Bearer ${value}` } : {};
   }
@@ -41,26 +47,96 @@
       ...options,
       headers: {
         "Content-Type": "application/json",
-        ...headers(),
+        ...authHeaders(),
         ...(options && options.headers ? options.headers : {}),
       },
     });
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      let detail = `HTTP ${response.status}`;
+      try {
+        const body = await response.json();
+        if (body && body.detail) detail = String(body.detail);
+      } catch (_) {
+        // Keep the status code when the server does not return JSON.
+      }
+      const error = new Error(detail);
+      error.status = response.status;
+      throw error;
     }
     return response.json();
   }
 
-  function postSlug() {
+  function escapeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderMarkdown(markdown) {
+    const escaped = escapeHtml(markdown);
+    return escaped
+      .split(/\n{2,}/)
+      .map((block) => {
+        const text = block.trim();
+        if (!text) return "";
+        if (/^###\s+/.test(text)) return `<h3>${text.replace(/^###\s+/, "")}</h3>`;
+        if (/^##\s+/.test(text)) return `<h2>${text.replace(/^##\s+/, "")}</h2>`;
+        if (/^#\s+/.test(text)) return `<h1>${text.replace(/^#\s+/, "")}</h1>`;
+        if (/^[-*]\s+/m.test(text)) {
+          const items = text
+            .split("\n")
+            .filter((line) => /^[-*]\s+/.test(line.trim()))
+            .map((line) => `<li>${line.trim().replace(/^[-*]\s+/, "")}</li>`)
+            .join("");
+          return `<ul>${items}</ul>`;
+        }
+        const inline = text
+          .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+          .replace(/`([^`]+)`/g, "<code>$1</code>")
+          .replace(/\n/g, "<br>");
+        return `<p>${inline}</p>`;
+      })
+      .join("");
+  }
+
+  function nextUrl() {
+    return `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  }
+
+  function authLink(mode) {
+    const next = encodeURIComponent(nextUrl());
+    return `/${mode}/?next=${next}`;
+  }
+
+  function logout() {
+    localStorage.removeItem("ALEPH_TOKEN");
+    localStorage.removeItem("ALEPH_USER");
+  }
+
+  function storeSession(result) {
+    localStorage.setItem("ALEPH_TOKEN", result.access_token);
+    localStorage.setItem("ALEPH_USER", JSON.stringify(result.user));
+  }
+
+  function staticArticleSlug() {
+    const match = window.location.pathname.match(articlePath);
     return match ? match[1] : null;
   }
 
-  function mountTarget() {
-    return (
-      document.querySelector(".article-content") ||
-      document.querySelector(".markdown-body") ||
-      document.querySelector("article")
-    );
+  function onlineArticleSlug() {
+    if (!onlinePath.test(window.location.pathname)) return null;
+    return new URLSearchParams(window.location.search).get("slug");
+  }
+
+  function currentPostSlug() {
+    return staticArticleSlug() || onlineArticleSlug();
+  }
+
+  function staticPostUrl(post) {
+    const date = String(post.date || "").slice(0, 10).replace(/-/g, "/");
+    return date ? `/${date}/${post.slug}/` : `/archives/`;
   }
 
   function setStatus(root, text) {
@@ -68,30 +144,19 @@
     if (node) node.textContent = text;
   }
 
-  function escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;");
-  }
-
-  function renderAuth(root) {
-    const current = user();
+  function renderAuthStatus(root) {
     const auth = root.querySelector("[data-online-auth]");
     if (!auth) return;
-    if (current) {
+    const user = currentUser();
+    if (user) {
       auth.innerHTML = `
-        <span>${escapeHtml(current.display_name || current.username)}</span>
-        <button type="button" data-action="logout">退出</button>
+        <span class="aleph-online__user">${escapeHtml(user.display_name || user.username)}</span>
+        <button type="button" data-action="logout"><i class="fa-regular fa-right-from-bracket"></i> 退出</button>
       `;
       return;
     }
     auth.innerHTML = `
-      <input type="text" autocomplete="username" placeholder="用户名" data-auth-username>
-      <input type="password" autocomplete="current-password" placeholder="密码" data-auth-password>
-      <button type="button" data-action="login">登录</button>
-      <button type="button" data-action="register">注册</button>
+      <span class="aleph-online__user">访客模式</span>
     `;
   }
 
@@ -99,21 +164,29 @@
     const list = root.querySelector("[data-online-comments]");
     if (!list) return;
     if (!comments.length) {
-      list.innerHTML = "";
+      list.innerHTML = '<p class="aleph-online__empty">暂无评论</p>';
       return;
     }
+    const user = currentUser();
     list.innerHTML = comments
-      .map(
-        (comment) => `
+      .map((comment) => {
+        const canDelete =
+          user && (user.is_owner || user.id === (comment.user && comment.user.id));
+        return `
           <div class="aleph-online__comment">
             <div class="aleph-online__comment-meta">
               <strong>${escapeHtml(comment.user.display_name)}</strong>
               <time>${new Date(comment.created_at).toLocaleString()}</time>
             </div>
             <div class="aleph-online__comment-body">${escapeHtml(comment.body)}</div>
+            ${
+              canDelete
+                ? `<button type="button" data-action="delete-comment" data-comment-id="${comment.id}"><i class="fa-regular fa-trash-can"></i> 删除</button>`
+                : ""
+            }
           </div>
-        `
-      )
+        `;
+      })
       .join("");
   }
 
@@ -121,66 +194,62 @@
     const like = root.querySelector('[data-action="like"]');
     const favorite = root.querySelector('[data-action="favorite"]');
     if (like) {
-      like.textContent = `Like ${state.likes}`;
+      like.innerHTML = `<i class="fa-regular fa-heart"></i> 点赞 ${state.likes}`;
       like.dataset.active = String(state.liked);
     }
     if (favorite) {
-      favorite.textContent = `Favorite ${state.favorites}`;
+      favorite.innerHTML = `<i class="fa-regular fa-bookmark"></i> 收藏 ${state.favorites}`;
       favorite.dataset.active = String(state.favorited);
     }
   }
 
-  async function refresh(root, slug) {
+  function renderComposer(root) {
+    const composer = root.querySelector("[data-online-composer]");
+    if (!composer) return;
+    if (currentUser()) {
+      composer.innerHTML = `
+        <textarea data-comment-body placeholder="写下评论"></textarea>
+        <button type="button" data-action="comment"><i class="fa-regular fa-paper-plane"></i> 发布评论</button>
+      `;
+      return;
+    }
+    composer.innerHTML = `
+      <p class="aleph-online__empty">登录后可以发布评论、点赞和收藏。</p>
+    `;
+  }
+
+  async function refreshInteraction(root, slug) {
     const [interactions, comments] = await Promise.all([
       request(`/posts/${slug}/interactions`),
       request(`/posts/${slug}/comments`),
     ]);
     renderInteractions(root, interactions);
     renderComments(root, comments);
+    renderAuthStatus(root);
+    renderComposer(root);
     setStatus(root, "在线互动已连接");
   }
 
-  async function authAction(root, action) {
-    const username = root.querySelector("[data-auth-username]")?.value.trim();
-    const password = root.querySelector("[data-auth-password]")?.value;
-    if (!username || !password) {
-      setStatus(root, "请输入用户名和密码");
-      return;
-    }
-    const result = await request(`/auth/${action}`, {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-    });
-    localStorage.setItem("ALEPH_TOKEN", result.access_token);
-    localStorage.setItem("ALEPH_USER", JSON.stringify(result.user));
-    renderAuth(root);
-  }
-
-  async function initArticle() {
-    const slug = postSlug();
-    const target = mountTarget();
-    if (!slug || !target || document.querySelector(".aleph-online")) return;
-
+  function mountArticleInteractions(slug, target) {
+    if (!slug || !target || target.querySelector(".aleph-online")) return;
     const root = document.createElement("section");
     root.className = "aleph-online";
     root.innerHTML = `
       <div class="aleph-online__bar">
-        <h2 class="aleph-online__title">Discussion</h2>
+        <h2 class="aleph-online__title">评论</h2>
         <div class="aleph-online__actions">
-          <button type="button" data-action="like">Like 0</button>
-          <button type="button" data-action="favorite">Favorite 0</button>
+          <button type="button" data-action="like"><i class="fa-regular fa-heart"></i> 点赞 0</button>
+          <button type="button" data-action="favorite"><i class="fa-regular fa-bookmark"></i> 收藏 0</button>
         </div>
       </div>
       <p class="aleph-online__status" data-online-status>正在连接在线互动</p>
       <div class="aleph-online__auth" data-online-auth></div>
       <div class="aleph-online__comments" data-online-comments></div>
-      <div class="aleph-online__composer">
-        <textarea data-comment-body placeholder="写下评论"></textarea>
-        <button type="button" data-action="comment">发布评论</button>
-      </div>
+      <div class="aleph-online__composer" data-online-composer></div>
     `;
     target.appendChild(root);
-    renderAuth(root);
+    renderAuthStatus(root);
+    renderComposer(root);
 
     root.addEventListener("click", async (event) => {
       const button = event.target.closest("button[data-action]");
@@ -188,20 +257,20 @@
       const action = button.dataset.action;
       try {
         if (action === "logout") {
-          localStorage.removeItem("ALEPH_TOKEN");
-          localStorage.removeItem("ALEPH_USER");
-          renderAuth(root);
-          await refresh(root, slug);
+          logout();
+          await refreshInteraction(root, slug);
+          return;
         }
-        if (action === "login" || action === "register") {
-          await authAction(root, action);
-          await refresh(root, slug);
+        if (!currentUser() && ["like", "favorite", "comment"].includes(action)) {
+          window.location.href = authLink("login");
+          return;
         }
         if (action === "like" || action === "favorite") {
           const active = button.dataset.active === "true";
           const method = active ? "DELETE" : "POST";
           const state = await request(`/posts/${slug}/${action}`, { method });
           renderInteractions(root, state);
+          return;
         }
         if (action === "comment") {
           const textarea = root.querySelector("[data-comment-body]");
@@ -212,18 +281,389 @@
             body: JSON.stringify({ body }),
           });
           textarea.value = "";
-          await refresh(root, slug);
+          await refreshInteraction(root, slug);
+          return;
+        }
+        if (action === "delete-comment") {
+          await request(`/posts/${slug}/comments/${button.dataset.commentId}`, {
+            method: "DELETE",
+          });
+          await refreshInteraction(root, slug);
         }
       } catch (_) {
         setStatus(root, "在线互动暂不可用");
       }
     });
 
-    try {
-      await refresh(root, slug);
-    } catch (_) {
+    refreshInteraction(root, slug).catch(() => {
       setStatus(root, "在线互动暂不可用");
+    });
+  }
+
+  function initStaticArticle() {
+    const slug = staticArticleSlug();
+    if (!slug) return;
+    const target =
+      document.querySelector(".article-content") ||
+      document.querySelector(".markdown-body") ||
+      document.querySelector("article");
+    mountArticleInteractions(slug, target);
+  }
+
+  function renderAuthPage(mode, root) {
+    const isRegister = mode === "register";
+    root.innerHTML = `
+      <section class="aleph-console aleph-auth">
+        <div class="aleph-console__header">
+          <h1>${isRegister ? "注册账号" : "登录账号"}</h1>
+          <p data-auth-status>${isRegister ? "创建账号后可以评论、点赞和收藏。" : "登录后继续刚才的操作。"}</p>
+        </div>
+        <form class="aleph-form" data-auth-form>
+          <label>
+            <span>用户名</span>
+            <input name="username" autocomplete="username" required minlength="2" maxlength="80">
+          </label>
+          ${
+            isRegister
+              ? `<label>
+                  <span>显示名</span>
+                  <input name="display_name" autocomplete="nickname" maxlength="120">
+                </label>`
+              : ""
+          }
+          <label>
+            <span>密码</span>
+            <input name="password" type="password" autocomplete="${isRegister ? "new-password" : "current-password"}" required minlength="8" maxlength="120">
+          </label>
+          ${
+            isRegister
+              ? `<label>
+                  <span>Owner Key</span>
+                  <input name="owner_key" type="password" autocomplete="off" maxlength="120">
+                </label>`
+              : ""
+          }
+          <div class="aleph-console__actions">
+            <button type="submit"><i class="fa-regular fa-${isRegister ? "user-plus" : "right-to-bracket"}"></i> ${isRegister ? "注册" : "登录"}</button>
+            <a class="aleph-online__link" href="/${isRegister ? "login" : "register"}/">${isRegister ? "已有账号，去登录" : "没有账号，去注册"}</a>
+          </div>
+        </form>
+      </section>
+    `;
+
+    root.querySelector("[data-auth-form]").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const form = new FormData(event.currentTarget);
+      const payload = {
+        username: String(form.get("username") || "").trim(),
+        password: String(form.get("password") || ""),
+      };
+      if (isRegister) {
+        const displayName = String(form.get("display_name") || "").trim();
+        const ownerKey = String(form.get("owner_key") || "");
+        if (displayName) payload.display_name = displayName;
+        if (ownerKey) payload.owner_key = ownerKey;
+      }
+      const status = root.querySelector("[data-auth-status]");
+      try {
+        const result = await request(`/auth/${mode}`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        storeSession(result);
+        status.textContent = "已登录，正在跳转。";
+        const next = new URLSearchParams(window.location.search).get("next") || "/";
+        window.location.href = next.startsWith("/") ? next : "/";
+      } catch (error) {
+        status.textContent = error.status === 409 ? "用户名已存在。" : "登录或注册失败，请检查输入。";
+      }
+    });
+  }
+
+  function initAuthPage() {
+    const match = window.location.pathname.match(authPath);
+    if (!match) return;
+    const target =
+      document.querySelector("[data-auth-app]") ||
+      document.querySelector(".article-content") ||
+      document.querySelector(".markdown-body") ||
+      document.querySelector("article");
+    if (!target || target.dataset.authMounted) return;
+    target.dataset.authMounted = "true";
+    renderAuthPage(match[1], target);
+  }
+
+  function renderOnlineList(root, posts) {
+    root.innerHTML = `
+      <section class="aleph-console">
+        <div class="aleph-console__header">
+          <h1>动态文章</h1>
+          <p>数据库在线文章会即时出现在这里；静态 Markdown 文章继续走 Hexo 页面。</p>
+        </div>
+        <div class="aleph-online-list">
+          ${posts
+            .map((post) => {
+              const href = post.source === "online" ? `/online/?slug=${encodeURIComponent(post.slug)}` : staticPostUrl(post);
+              return `
+                <article class="aleph-online-list__item">
+                  <a href="${href}">${escapeHtml(post.title)}</a>
+                  <span>${escapeHtml(post.source)}</span>
+                  <p>${escapeHtml(post.excerpt)}</p>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </section>
+    `;
+  }
+
+  async function renderOnlinePost(root, slug) {
+    const post = await request(`/posts/${slug}`);
+    document.title = `${post.title} | Aleph_null's Blog`;
+    root.innerHTML = `
+      <article class="aleph-console aleph-online-post">
+        <div class="aleph-console__header">
+          <a class="aleph-online__link" href="/online/">动态文章</a>
+          <h1>${escapeHtml(post.title)}</h1>
+          <p>${escapeHtml(post.excerpt || post.date || "")}</p>
+        </div>
+        <div class="aleph-online-post__body markdown-body">${renderMarkdown(post.body)}</div>
+      </article>
+    `;
+    mountArticleInteractions(slug, root.querySelector(".aleph-online-post"));
+  }
+
+  async function initOnlinePage() {
+    if (!onlinePath.test(window.location.pathname)) return;
+    const root =
+      document.querySelector("[data-online-posts]") ||
+      document.querySelector(".article-content") ||
+      document.querySelector(".markdown-body");
+    if (!root || root.dataset.onlineMounted) return;
+    root.dataset.onlineMounted = "true";
+    const slug = onlineArticleSlug();
+    root.innerHTML = '<p class="aleph-online__status">正在加载在线文章</p>';
+    try {
+      if (slug) {
+        await renderOnlinePost(root, slug);
+      } else {
+        const posts = await request("/posts");
+        renderOnlineList(root, posts);
+      }
+    } catch (_) {
+      root.innerHTML = '<p class="aleph-online__status">在线文章暂不可用。</p>';
     }
+  }
+
+  function renderAdmin(root, state) {
+    const posts = state.posts || [];
+    const comments = state.comments || [];
+    const analytics = state.analytics || {};
+    root.innerHTML = `
+      <section class="aleph-console" data-admin-root>
+        <div class="aleph-console__header">
+          <h1>管理后台</h1>
+          <p data-admin-status>已登录 owner：${escapeHtml(currentUser().display_name || currentUser().username)}</p>
+        </div>
+        <div class="aleph-stats">
+          <div><strong>${analytics.total_page_views || 0}</strong><span>访问</span></div>
+          <div><strong>${analytics.total_users || 0}</strong><span>用户</span></div>
+          <div><strong>${analytics.total_comments || 0}</strong><span>评论</span></div>
+          <div><strong>${analytics.total_likes || 0}</strong><span>点赞</span></div>
+          <div><strong>${analytics.total_favorites || 0}</strong><span>收藏</span></div>
+        </div>
+        <form class="aleph-form" data-admin-form>
+          <input type="hidden" name="editing_slug">
+          <label>
+            <span>Slug</span>
+            <input name="slug" required minlength="2" maxlength="160" pattern="[a-z0-9][a-z0-9\\-]*">
+          </label>
+          <label>
+            <span>Title</span>
+            <input name="title" required maxlength="220">
+          </label>
+          <label>
+            <span>Excerpt</span>
+            <input name="excerpt" maxlength="500">
+          </label>
+          <label class="aleph-form__check">
+            <input name="published" type="checkbox" checked>
+            <span>Published</span>
+          </label>
+          <label>
+            <span>Body</span>
+            <textarea name="body" required></textarea>
+          </label>
+          <div class="aleph-console__actions">
+            <button type="submit" data-admin-submit><i class="fa-regular fa-floppy-disk"></i> 保存文章</button>
+            <button type="button" data-admin-action="clear"><i class="fa-regular fa-file"></i> 新建</button>
+          </div>
+        </form>
+        <div class="aleph-admin-grid">
+          <section>
+            <h2>动态文章</h2>
+            <div class="aleph-admin-list" data-admin-posts>
+              ${posts
+                .map(
+                  (post) => `
+                    <article class="aleph-admin-list__item" data-post-slug="${escapeHtml(post.slug)}">
+                      <div>
+                        <strong>${escapeHtml(post.title)}</strong>
+                        <p>${escapeHtml(post.slug)} · ${post.published ? "published" : "draft"}</p>
+                      </div>
+                      <div class="aleph-console__actions">
+                        ${
+                          post.published
+                            ? `<a class="aleph-online__link" href="/online/?slug=${encodeURIComponent(post.slug)}">查看</a>`
+                            : ""
+                        }
+                        <button type="button" data-admin-action="edit" data-slug="${escapeHtml(post.slug)}"><i class="fa-regular fa-pen-to-square"></i> 编辑</button>
+                        <button type="button" data-admin-action="delete-post" data-slug="${escapeHtml(post.slug)}"><i class="fa-regular fa-trash-can"></i> 删除</button>
+                      </div>
+                    </article>
+                  `
+                )
+                .join("")}
+            </div>
+          </section>
+          <section>
+            <h2>Recent Comments</h2>
+            <div class="aleph-admin-list" data-admin-comments>
+              ${comments
+                .map(
+                  (comment) => `
+                    <article class="aleph-admin-list__item">
+                      <div>
+                        <strong>${escapeHtml(comment.user.display_name)}</strong>
+                        <p>${escapeHtml(comment.post_slug)} · ${escapeHtml(comment.body)}</p>
+                      </div>
+                      <button type="button" data-admin-action="delete-comment" data-comment-id="${comment.id}"><i class="fa-regular fa-trash-can"></i> 删除</button>
+                    </article>
+                  `
+                )
+                .join("")}
+            </div>
+          </section>
+        </div>
+      </section>
+    `;
+  }
+
+  async function loadAdminState() {
+    const [posts, comments, analytics] = await Promise.all([
+      request("/admin/posts"),
+      request("/admin/comments"),
+      request("/analytics/summary"),
+    ]);
+    return { posts, comments, analytics };
+  }
+
+  function fillAdminForm(root, post) {
+    const form = root.querySelector("[data-admin-form]");
+    form.elements.editing_slug.value = post.slug;
+    form.elements.slug.value = post.slug;
+    form.elements.title.value = post.title;
+    form.elements.excerpt.value = post.excerpt || "";
+    form.elements.body.value = post.body;
+    form.elements.published.checked = Boolean(post.published);
+    root.querySelector("[data-admin-submit]").textContent = "更新文章";
+  }
+
+  function clearAdminForm(root) {
+    const form = root.querySelector("[data-admin-form]");
+    form.reset();
+    form.elements.editing_slug.value = "";
+    form.elements.published.checked = true;
+    root.querySelector("[data-admin-submit]").innerHTML = '<i class="fa-regular fa-floppy-disk"></i> 保存文章';
+  }
+
+  async function initAdminPage() {
+    if (!adminPath.test(window.location.pathname)) return;
+    const root =
+      document.querySelector("[data-admin-app]") ||
+      document.querySelector(".article-content") ||
+      document.querySelector(".markdown-body");
+    if (!root || root.dataset.adminMounted) return;
+    root.dataset.adminMounted = "true";
+    root.innerHTML = '<p class="aleph-online__status">正在加载管理控制台</p>';
+    try {
+      const me = await request("/auth/me");
+      localStorage.setItem("ALEPH_USER", JSON.stringify(me));
+      if (!me.is_owner) {
+        root.innerHTML = `
+          <section class="aleph-console">
+            <h1>管理后台</h1>
+            <p>当前账号没有管理员权限。</p>
+          </section>
+        `;
+        return;
+      }
+      renderAdmin(root, await loadAdminState());
+    } catch (error) {
+      root.innerHTML = `
+        <section class="aleph-console">
+          <h1>管理后台</h1>
+          <p>请先登录 owner 账号。</p>
+          <a class="aleph-online__link" href="${authLink("login")}">登录</a>
+        </section>
+      `;
+      return;
+    }
+
+    root.addEventListener("submit", async (event) => {
+      if (!event.target.matches("[data-admin-form]")) return;
+      event.preventDefault();
+      const form = event.target;
+      const payload = {
+        slug: form.elements.slug.value.trim(),
+        title: form.elements.title.value.trim(),
+        excerpt: form.elements.excerpt.value.trim(),
+        body: form.elements.body.value.trim(),
+        published: form.elements.published.checked,
+      };
+      const editingSlug = form.elements.editing_slug.value;
+      const status = root.querySelector("[data-admin-status]");
+      try {
+        await request(editingSlug ? `/admin/posts/${editingSlug}` : "/admin/posts", {
+          method: editingSlug ? "PUT" : "POST",
+          body: JSON.stringify(payload),
+        });
+        status.textContent = "文章已保存。";
+        renderAdmin(root, await loadAdminState());
+      } catch (error) {
+        status.textContent = error.status === 409 ? "Slug 已存在。" : "保存失败。";
+      }
+    });
+
+    root.addEventListener("click", async (event) => {
+      const target = event.target.closest("[data-admin-action]");
+      if (!target) return;
+      const action = target.dataset.adminAction;
+      const status = root.querySelector("[data-admin-status]");
+      try {
+        if (action === "clear") {
+          clearAdminForm(root);
+          return;
+        }
+        if (action === "edit") {
+          fillAdminForm(root, await request(`/admin/posts/${target.dataset.slug}`));
+          return;
+        }
+        if (action === "delete-post") {
+          if (!window.confirm("删除这篇在线文章？")) return;
+          await request(`/admin/posts/${target.dataset.slug}`, { method: "DELETE" });
+          renderAdmin(root, await loadAdminState());
+          return;
+        }
+        if (action === "delete-comment") {
+          await request(`/admin/comments/${target.dataset.commentId}`, { method: "DELETE" });
+          renderAdmin(root, await loadAdminState());
+        }
+      } catch (_) {
+        status.textContent = "操作失败。";
+      }
+    });
   }
 
   async function sendPageView() {
@@ -232,7 +672,7 @@
         method: "POST",
         body: JSON.stringify({
           path: window.location.pathname,
-          post_slug: postSlug(),
+          post_slug: currentPostSlug(),
         }),
       });
     } catch (_) {
@@ -241,7 +681,10 @@
   }
 
   function init() {
-    initArticle();
+    initStaticArticle();
+    initAuthPage();
+    initOnlinePage();
+    initAdminPage();
     sendPageView();
   }
 
@@ -250,4 +693,5 @@
   } else {
     init();
   }
+  document.addEventListener("swup:contentReplaced", init);
 })();

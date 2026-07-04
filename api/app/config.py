@@ -14,6 +14,7 @@ class Settings:
         self.secret_key = os.getenv("SECRET_KEY", "dev-only-change-me")
         self.access_token_minutes = int(os.getenv("ACCESS_TOKEN_MINUTES", "10080"))
         self.owner_username = os.getenv("OWNER_USERNAME", "Aleph_null")
+        self.owner_setup_key = os.getenv("OWNER_SETUP_KEY", "")
         self.cors_origins = [
             item.strip()
             for item in os.getenv("CORS_ORIGINS", "*").split(",")

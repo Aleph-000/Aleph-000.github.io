@@ -7,6 +7,7 @@ class UserCreate(BaseModel):
     username: str = Field(min_length=2, max_length=80, pattern=r"^[A-Za-z0-9_\-]+$")
     password: str = Field(min_length=8, max_length=120)
     display_name: str | None = Field(default=None, max_length=120)
+    owner_key: str | None = Field(default=None, max_length=120)
 
 
 class UserLogin(BaseModel):
@@ -45,6 +46,22 @@ class OnlinePostCreate(BaseModel):
     excerpt: str = Field(default="", max_length=500)
     body: str = Field(min_length=1)
     published: bool = True
+
+
+class OnlinePostUpdate(BaseModel):
+    slug: str | None = Field(
+        default=None, min_length=2, max_length=160, pattern=r"^[a-z0-9][a-z0-9\-]*$"
+    )
+    title: str | None = Field(default=None, min_length=1, max_length=220)
+    excerpt: str | None = Field(default=None, max_length=500)
+    body: str | None = Field(default=None, min_length=1)
+    published: bool | None = None
+
+
+class AdminPostOut(PostDetail):
+    published: bool
+    created_at: datetime
+    updated_at: datetime
 
 
 class CommentCreate(BaseModel):

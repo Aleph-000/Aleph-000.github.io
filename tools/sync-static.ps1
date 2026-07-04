@@ -24,6 +24,7 @@ function Copy-PublicTo($Target) {
 function Sync-RootStatic() {
   $generatedItems = @(
     "2026",
+    "admin",
     "about",
     "archives",
     "assets",
@@ -33,7 +34,10 @@ function Sync-RootStatic() {
     "fonts",
     "images",
     "js",
+    "login",
+    "online",
     "projects",
+    "register",
     "tags",
     "webfonts",
     "404.html",

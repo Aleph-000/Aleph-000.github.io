@@ -1,0 +1,13 @@
+.agent
+.git
+.github
+.playwright-cli
+.pytest_cache
+node_modules
+public
+do-static
+api/.venv
+api/data
+*.log
+*.sqlite
+*.sqlite3

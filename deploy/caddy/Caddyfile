@@ -1,0 +1,12 @@
+aleph-null.cc {
+	encode zstd gzip
+
+	handle /api* {
+		reverse_proxy api:8000
+	}
+
+	handle {
+		root * /srv
+		file_server
+	}
+}
