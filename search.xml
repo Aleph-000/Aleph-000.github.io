@@ -1,36 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>项目与作品集</title>
-    <url>/2026/07/04/projects-placeholder/</url>
-    <content><![CDATA[<p>这篇文章用于整理后续要展示的项目。</p>
-<p>每个项目建议包含目标、技术栈、你负责的部分、最终效果和仓库链接。这样访客能快速判断你的能力边界，也方便你之后投递简历或分享作品。</p>
-<h2 id="项目模板"><a href="#项目模板" class="headerlink" title="项目模板"></a>项目模板</h2><h3 id="项目名称"><a href="#项目名称" class="headerlink" title="项目名称"></a>项目名称</h3><ul>
-<li>背景：</li>
-<li>技术栈：</li>
-<li>我的工作：</li>
-<li>结果：</li>
-<li>链接：</li>
+    <title>从 0 到 1 的个人博客</title>
+    <url>/2026/07/04/hello-aleph-null-blog/</url>
+    <content><![CDATA[<p>这是这个个人博客的第一篇文章，也是“从 0 到 1 做实用好玩的个人博客”的起点记录。</p>
+<p>我希望这里不只是一个静态名片，而是一处能长期维护的个人空间：介绍自己、展示项目、记录学习，也沉淀一些阶段性的想法。</p>
+<p>当前主线 1 已经先完成基础框架：</p>
+<ul>
+<li>支持用 Markdown 写博客文章，并由 GitHub 仓库存储</li>
+<li>有个人介绍页面，展示身份、兴趣、经历、技能和获奖</li>
+<li>有项目展示页面，整理正在做过的项目</li>
+<li>通过 <code>https://aleph-000.github.io/</code> 访问</li>
+<li>评论区暂时关闭，后续可以接入 Giscus 或全栈后端评论系统</li>
 </ul>
-]]></content>
-      <categories>
-        <category>项目</category>
-      </categories>
-      <tags>
-        <tag>Portfolio</tag>
-        <tag>Projects</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>你好，新的个人博客</title>
-    <url>/2026/07/04/hello-vito-blog/</url>
-    <content><![CDATA[<p>这是这个个人博客的第一篇文章。</p>
-<p>我希望它不仅是一个展示自己的页面，也是一处持续记录学习和项目进展的地方。网站已经使用 Hexo 和 Redefine 主题搭好，后续可以直接通过 Markdown 写文章。</p>
 <h2 id="下一步"><a href="#下一步" class="headerlink" title="下一步"></a>下一步</h2><ul>
-<li>补充真实的个人介绍</li>
-<li>整理学习笔记和项目文章</li>
-<li>替换首页背景图和头像</li>
-<li>绑定 GitHub Pages 自动发布</li>
+<li>继续补充学习笔记和项目复盘</li>
+<li>为主线 2 设计后端、数据库、登录鉴权和评论系统</li>
+<li>在后续支线中尝试搜索、统计、AI 自动化内容生成等功能</li>
 </ul>
 ]]></content>
       <categories>
@@ -39,6 +25,30 @@
       <tags>
         <tag>Blog</tag>
         <tag>Personal</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>24 Points Machine 项目记录</title>
+    <url>/2026/07/04/projects-placeholder/</url>
+    <content><![CDATA[<p>24 Points Machine 是一个围绕 24 点问题的项目，包含算法求解核心和网站展示两个部分。</p>
+<h2 id="项目目标"><a href="#项目目标" class="headerlink" title="项目目标"></a>项目目标</h2><p>把 24 点问题的求解逻辑和网页交互结合起来，让用户能够更直观地输入题目、查看计算过程，并理解不同表达式组合的生成方式。</p>
+<h2 id="项目组成"><a href="#项目组成" class="headerlink" title="项目组成"></a>项目组成</h2><ul>
+<li>算法核心：<a class="link"   href="https://github.com/Aleph-000/24-Points-Machine" >Aleph-000&#x2F;24-Points-Machine<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></li>
+<li>网站展示：<a class="link"   href="https://github.com/Aleph-000/24-Points-Machine-Website" >Aleph-000&#x2F;24-Points-Machine-Website<i class="fa-solid fa-arrow-up-right ml-[0.2em] font-light align-text-top text-[0.7em] link-icon"></i></a></li>
+</ul>
+<h2 id="我的关注点"><a href="#我的关注点" class="headerlink" title="我的关注点"></a>我的关注点</h2><ul>
+<li>通过程序枚举和组合表达式，完成 24 点问题求解</li>
+<li>将求解能力包装成可交互的网站体验</li>
+<li>在项目中练习前端展示、算法逻辑组织和工程化部署</li>
+</ul>
+<h2 id="价值"><a href="#价值" class="headerlink" title="价值"></a>价值</h2><p>这个项目把算法题从命令行或单纯代码变成可体验的网站工具，是我从“写出逻辑”走向“做出产品”的一次实践。</p>
+]]></content>
+      <categories>
+        <category>项目</category>
+      </categories>
+      <tags>
+        <tag>Portfolio</tag>
+        <tag>Projects</tag>
       </tags>
   </entry>
 </search>

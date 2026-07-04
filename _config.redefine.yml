@@ -1,8 +1,8 @@
 info:
-  title: Aleph-000's Blog
-  subtitle: Vito's personal space
-  author: Vito
-  url: https://Aleph-000.github.io
+  title: Aleph_null's Blog
+  subtitle: 浙江大学学生 / AI 与编程学习者 / 独立开发爱好者
+  author: Aleph_null
+  url: https://aleph-000.github.io
 
 defaults:
   favicon: /images/favicon.svg
@@ -35,7 +35,7 @@ global:
   open_graph:
     enable: true
     image: /images/redefine-og.webp
-    description: Vito 的个人博客，记录学习、项目、想法与生活。
+    description: Aleph_null 的个人博客，记录全栈 AI 开发、项目、CTF、图寻与学习思考。
   google_analytics:
     enable: false
 
@@ -45,12 +45,12 @@ home_banner:
   image:
     light: /images/wallhaven-wqery6-light.webp
     dark: /images/wallhaven-wqery6-dark.webp
-  title: Vito's Blog
+  title: Aleph_null
   subtitle:
     text:
-      - 学习 / 编程 / 项目 / 生活
-      - Build in public, think in writing.
-      - Welcome to my personal website.
+      - 浙江大学计算机科学与技术专业
+      - AI / Full-stack / CTF / 图寻
+      - 用数学和工程把想法落地。
     hitokoto:
       enable: false
       show_author: false
@@ -75,7 +75,6 @@ home_banner:
     style: default
     links:
       github: https://github.com/Aleph-000
-      email: vito_wong0619@163.com
     qrs:
       weixin:
 
@@ -100,6 +99,9 @@ navbar:
       submenus:
         Me: /about
         Github: https://github.com/Aleph-000
+    Projects:
+      path: /projects
+      icon: fa-regular fa-code
     Categories:
       path: /categories
       icon: fa-regular fa-folder
@@ -115,7 +117,7 @@ home:
     enable: true
     position: left
     first_item: menu
-    announcement: 正在搭建中的个人博客。
+    announcement: 记录 AI 开发、项目实践、CTF 与学习思考。
     show_on_mobile: true
     links:
       About:
@@ -124,6 +126,9 @@ home:
       Archives:
         path: /archives
         icon: fa-regular fa-archive
+      Projects:
+        path: /projects
+        icon: fa-regular fa-code
       Tags:
         path: /tags
         icon: fa-regular fa-tags

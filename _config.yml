@@ -3,15 +3,15 @@
 ## Source: https://github.com/hexojs/hexo/
 
 # Site
-title: Aleph-000's Blog
-subtitle: Vito's personal space
-description: Vito 的个人博客，记录学习、项目、想法与生活。
+title: Aleph_null's Blog
+subtitle: 浙江大学学生 / AI 与编程学习者 / 独立开发爱好者
+description: Aleph_null 的个人博客，记录全栈 AI 开发、项目、CTF、图寻与学习思考。
 keywords:
   - personal blog
   - Hexo
-  - Vito
+  - Aleph_null
   - Aleph-000
-author: Vito
+author: Aleph_null
 language: zh-CN
 timezone: Asia/Shanghai
 

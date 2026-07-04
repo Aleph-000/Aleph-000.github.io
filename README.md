@@ -1,4 +1,4 @@
-# Aleph-000's Blog
+# Aleph_null's Blog
 
 个人博客源码，使用 Hexo 和 hexo-theme-redefine 构建。
 
