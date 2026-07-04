@@ -7,3 +7,8 @@ public/
 .deploy*/
 _multiconfig.yml
 .playwright-cli/
+.env
+api/.venv/
+api/data/
+*.sqlite
+*.sqlite3

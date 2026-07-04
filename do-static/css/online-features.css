@@ -1,0 +1,135 @@
+.aleph-online {
+  margin-top: 2.4rem;
+  padding: 1rem;
+  border: 1px solid rgba(80, 80, 80, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(10px);
+}
+
+.dark .aleph-online {
+  background: rgba(25, 25, 25, 0.62);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.aleph-online__bar,
+.aleph-online__auth,
+.aleph-online__composer {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.aleph-online__bar {
+  justify-content: space-between;
+}
+
+.aleph-online__title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.aleph-online__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.aleph-online button {
+  min-height: 34px;
+  border: 1px solid rgba(80, 80, 80, 0.2);
+  border-radius: 6px;
+  padding: 0 0.7rem;
+  background: rgba(255, 255, 255, 0.86);
+  cursor: pointer;
+  font: inherit;
+}
+
+.dark .aleph-online button {
+  color: #f3f3f3;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.aleph-online button[data-active="true"] {
+  border-color: #a31f34;
+  color: #a31f34;
+  font-weight: 700;
+}
+
+.aleph-online input,
+.aleph-online textarea {
+  border: 1px solid rgba(80, 80, 80, 0.18);
+  border-radius: 6px;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.dark .aleph-online input,
+.dark .aleph-online textarea {
+  color: #f3f3f3;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.aleph-online input {
+  width: min(170px, 100%);
+}
+
+.aleph-online textarea {
+  width: 100%;
+  min-height: 88px;
+  resize: vertical;
+}
+
+.aleph-online__status {
+  margin: 0.8rem 0;
+  font-size: 0.92rem;
+  opacity: 0.78;
+}
+
+.aleph-online__comments {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.aleph-online__comment {
+  padding: 0.8rem;
+  border-radius: 8px;
+  background: rgba(120, 120, 120, 0.08);
+}
+
+.aleph-online__comment-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 0.86rem;
+  opacity: 0.74;
+  margin-bottom: 0.45rem;
+}
+
+.aleph-online__comment-body {
+  white-space: pre-wrap;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .aleph-online {
+    padding: 0.85rem;
+  }
+
+  .aleph-online__bar,
+  .aleph-online__auth {
+    align-items: stretch;
+  }
+
+  .aleph-online__actions,
+  .aleph-online button,
+  .aleph-online input {
+    width: 100%;
+  }
+}

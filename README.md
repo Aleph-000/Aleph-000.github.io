@@ -1,8 +1,12 @@
 # Aleph_null's Blog
 
-个人博客源码，使用 Hexo 和 hexo-theme-redefine 构建。
+个人博客源码，支持静态作品集版本和在线互动版本。
 
-线上站点发布在 `https://aleph-000.github.io/`。当前仓库采用根目录静态发布：`index.html`、`css/`、`js/` 等文件由 Hexo 生成后提交到 `main` 分支根目录，GitHub Pages 可以直接读取。
+- Static site: Hexo + hexo-theme-redefine
+- Online API: FastAPI + SQLAlchemy
+- Database: SQLite for local development, PostgreSQL for Docker Compose
+
+静态站点可以部署到 GitHub Pages 或 DigitalOcean Static Site。在线功能通过浏览器脚本接入 API，API 不可用时静态内容仍可访问。
 
 ## Local Development
 
@@ -17,7 +21,32 @@ pnpm server
 pnpm build
 ```
 
-重新生成静态站点后，把 `public/` 目录里的内容同步到仓库根目录再提交。
+同步 DigitalOcean 静态部署目录：
+
+```bash
+pnpm run sync:static
+```
+
+完整本地 CI：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File tools\ci.ps1
+```
+
+## Online API
+
+```powershell
+cd api
+python -m pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Docker Compose:
+
+```powershell
+Copy-Item .env.example .env
+docker compose up --build
+```
 
 ## Content
 
@@ -25,4 +54,9 @@ pnpm build
 - 关于页在 `source/about/index.md`
 - 主题配置在 `_config.redefine.yml`
 
-当前内容是可替换的初始版本。补充真实个人信息后，可以继续完善首页、关于页和项目文章。
+## Documentation
+
+- `docs/architecture.md`
+- `docs/deployment.md`
+- `docs/requirements-map.md`
+- `docs/ci-cd.md`

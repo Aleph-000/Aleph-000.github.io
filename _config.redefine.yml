@@ -204,6 +204,7 @@ page_templates:
 inject:
   enable: true
   head:
+    - <link rel="stylesheet" href="/css/online-features.css">
     - |
       <style>
         .home-banner-container .description {
@@ -221,4 +222,4 @@ inject:
         }
       </style>
   footer:
-    -
+    - <script src="/js/online-features.js" defer></script>
