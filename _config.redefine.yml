@@ -204,7 +204,7 @@ page_templates:
 inject:
   enable: true
   head:
-    - <link rel="stylesheet" href="/css/online-features.css?v=20260704-2240">
+    - <link rel="stylesheet" href="/css/online-features.css?v=20260705-1205">
     - <script>document.title = "Aleph_null's Blog";</script>
     - |
       <style>
@@ -224,4 +224,4 @@ inject:
       </style>
   footer:
     - <script src="https://cdn.jsdelivr.net/npm/marked@13.0.3/marked.min.js" defer></script>
-    - <script src="/js/online-features.js?v=20260704-2240" defer></script>
+    - <script src="/js/online-features.js?v=20260705-1205" defer></script>

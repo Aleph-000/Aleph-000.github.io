@@ -65,7 +65,13 @@
       let detail = `HTTP ${response.status}`;
       try {
         const body = await response.json();
-        if (body && body.detail) detail = String(body.detail);
+        if (Array.isArray(body?.detail)) {
+          detail = body.detail
+            .map((item) => item.msg || item.message || JSON.stringify(item))
+            .join("；");
+        } else if (body && body.detail) {
+          detail = String(body.detail);
+        }
       } catch (_) {
         // Keep the status code when the server does not return JSON.
       }
@@ -1147,6 +1153,62 @@
       .filter(Boolean);
   }
 
+  function slugFromTitle(title) {
+    const slug = String(title || "")
+      .normalize("NFKD")
+      .toLowerCase()
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 120);
+    return slug || `post-${Date.now()}`;
+  }
+
+  function uniqueSlug(base, posts, editingSlug) {
+    const taken = new Set(
+      (posts || [])
+        .map((post) => post.slug)
+        .filter((slug) => slug && slug !== editingSlug)
+    );
+    let slug = base;
+    let index = 2;
+    while (taken.has(slug)) {
+      const suffix = `-${index}`;
+      slug = `${base.slice(0, 160 - suffix.length)}${suffix}`;
+      index += 1;
+    }
+    return slug;
+  }
+
+  function ensureAdminSlug(root, form) {
+    const editingSlug = form.elements.editing_slug.value;
+    const current = form.elements.slug.value.trim();
+    const base = current || slugFromTitle(form.elements.title.value);
+    const slug = uniqueSlug(base, root.__adminState?.posts || [], editingSlug);
+    form.elements.slug.value = slug;
+    return slug;
+  }
+
+  function validationMessage(form) {
+    const invalid = form.querySelector(":invalid");
+    if (!invalid) return "";
+    const label = invalid.closest("label");
+    const name = label?.querySelector("span")?.textContent?.trim() || invalid.name || "字段";
+    if (invalid.name === "slug") {
+      return "文章地址只能使用小写英文、数字和连字符，例如 my-first-post。";
+    }
+    if (invalid.name === "body") return "请填写正文 Markdown。";
+    if (invalid.name === "title") return "请填写标题。";
+    return `${name}填写有误。`;
+  }
+
+  function requestErrorMessage(error) {
+    if (error.status === 409) return "文章地址已存在。";
+    if (error.status === 422) return `保存失败：${error.message}`;
+    if (error.status === 401 || error.status === 403) return "登录状态或管理员权限失效，请重新登录。";
+    return `保存失败：${error.message || "请检查网络和输入内容。"}`;
+  }
+
   function defaultSortOrder(posts) {
     if (!posts.length) return 10;
     return Math.max(...posts.map((post) => Number(post.sort_order || 0))) + 10;
@@ -1305,6 +1367,7 @@
     const form = root.querySelector("[data-admin-form]");
     form.elements.editing_slug.value = post.slug;
     form.elements.slug.value = post.slug;
+    form.elements.slug.dataset.autoSlug = "false";
     form.elements.title.value = post.title;
     form.elements.excerpt.value = post.excerpt || "";
     form.elements.category.value = postCategory(post);
@@ -1321,6 +1384,7 @@
     const form = root.querySelector("[data-admin-form]");
     form.reset();
     form.elements.editing_slug.value = "";
+    form.elements.slug.dataset.autoSlug = "true";
     form.elements.published.checked = true;
     form.elements.category.value = "";
     form.elements.tags.value = "";
@@ -1378,6 +1442,8 @@
         return;
       }
       renderAdmin(root, await loadAdminState());
+      const initialForm = root.querySelector("[data-admin-form]");
+      if (initialForm) initialForm.elements.slug.dataset.autoSlug = "true";
     } catch (error) {
       root.innerHTML = `
         <section class="aleph-console">
@@ -1392,6 +1458,19 @@
       if (!event.target.matches("[data-admin-form]")) return;
       event.preventDefault();
       const form = event.target;
+      const status = root.querySelector("[data-admin-status]");
+      ensureAdminSlug(root, form);
+      if (!form.checkValidity()) {
+        status.textContent = validationMessage(form);
+        form.reportValidity();
+        return;
+      }
+      const submit = root.querySelector("[data-admin-submit]");
+      if (submit) {
+        submit.disabled = true;
+        submit.dataset.originalText = submit.innerHTML;
+        submit.innerHTML = '<i class="fa-regular fa-spinner fa-spin"></i> 保存中';
+      }
       const payload = {
         slug: form.elements.slug.value.trim(),
         title: form.elements.title.value.trim(),
@@ -1406,17 +1485,43 @@
         sort_order: Number(form.elements.sort_order.value || 0),
       };
       const editingSlug = form.elements.editing_slug.value;
-      const status = root.querySelector("[data-admin-status]");
       try {
+        status.textContent = "正在保存文章...";
         await request(editingSlug ? `/admin/posts/${editingSlug}` : "/admin/posts", {
           method: editingSlug ? "PUT" : "POST",
           body: JSON.stringify(payload),
         });
         publicPostsPromise = null;
-        status.textContent = "文章已保存。";
-        renderAdmin(root, await loadAdminState());
+        const nextState = await loadAdminState();
+        renderAdmin(root, nextState);
+        const nextStatus = root.querySelector("[data-admin-status]");
+        if (nextStatus) nextStatus.textContent = "文章已保存。";
+        clearAdminForm(root);
       } catch (error) {
-        status.textContent = error.status === 409 ? "文章地址已存在。" : "保存失败。";
+        status.textContent = requestErrorMessage(error);
+      } finally {
+        if (submit && submit.isConnected) {
+          submit.disabled = false;
+          submit.innerHTML = submit.dataset.originalText || "保存文章";
+        }
+      }
+    });
+
+    root.addEventListener("input", (event) => {
+      const form = event.target.closest("[data-admin-form]");
+      if (!form) return;
+      if (event.target.name === "slug") {
+        form.elements.slug.dataset.autoSlug = form.elements.slug.value.trim()
+          ? "false"
+          : "true";
+      }
+      if (event.target.name === "title" && form.elements.slug.dataset.autoSlug !== "false") {
+        form.elements.slug.dataset.autoSlug = "true";
+        form.elements.slug.value = uniqueSlug(
+          slugFromTitle(form.elements.title.value),
+          root.__adminState?.posts || [],
+          form.elements.editing_slug.value
+        );
       }
     });
 
